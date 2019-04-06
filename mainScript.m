@@ -57,7 +57,7 @@ if ~exist(saveItHere); mkdir(saveItHere); end
 
 %% Create working tables
 % Select only the Wahl tracts from the AFQ output
-tracts = [{'CingulumCingulate'}, {'Arcuate'}, {'IFOF'}, {'ILF'}, {'Uncinate'}, ...
+useTracts = [{'CingulumCingulate'}, {'Arcuate'}, {'IFOF'}, {'ILF'}, {'Uncinate'}, ...
           {'Corticospinal'}];
 
 % Do the filtering and obtain the unstacked tract profiles
@@ -65,29 +65,39 @@ tracts = [{'CingulumCingulate'}, {'Arcuate'}, {'IFOF'}, {'ILF'}, {'Uncinate'}, .
                                  'sliceBasedOn',           {'Proj', 'SHELL'}, ...
                                  'SHELL',                  {'1000', '2000', '3000'}, ...
                                  'removeTractsContaining', {'Callosum'}, ... 
-                                 'useThisTractsOnly',       tracts, ...
+                                 'useThisTractsOnly',       useTracts, ...
                                  'createTractPairs',        true, ... 
                                  'TRT',                    'TEST', ...
                                  'AGE',                     [14,58], ...
-                                 'GENDER',                 {'male', 'female'});
-                             
-[dtrt, unsProfrt, unsMeansrt] = dr_createWorkingTables(DT, ...
-                                 'sliceBasedOn',           {'Proj', 'SHELL'}, ...
-                                 'SHELL',                  {'1000', '2000', '3000'}, ...
-                                 'removeTractsContaining', {'Callosum'}, ... 
-                                 'useThisTractsOnly',       tracts, ...
-                                 'createTractPairs',        true, ...
-                                 'TRT',                    'RETEST', ...
-                                 'AGE',                     [14,58], ...
-                                 'GENDER',                 {'male', 'female'});
+                                 'GENDER',                 {'male', 'female'});                             
                              
 [dtTRT, unsProfTRT, unsMeansTRT] = dr_createWorkingTables(DT(DT.Proj=='HCP',:), ...
                                  'sliceBasedOn',           {'Proj', 'SHELL','TRT'}, ...
                                  'SHELL',                  {'1000', '2000', '3000'}, ...
                                  'removeTractsContaining', {'Callosum'}, ... 
-                                 'useThisTractsOnly',       tracts, ...
+                                 'useThisTractsOnly',       useTracts, ...
                                  'createTractPairs',        true, ...
                                  'TRT',                    'notTRAIN', ...
+                                 'AGE',                     [14,58], ...
+                                 'GENDER',                 {'male', 'female'});
+                             
+[dtt1000, unsProft1000, unsMeanst1000] = dr_createWorkingTables(DT, ...
+                                 'sliceBasedOn',           {'Proj', 'SHELL'}, ...
+                                 'SHELL',                  {'1000'}, ...
+                                 'removeTractsContaining', {'Callosum'}, ... 
+                                 'useThisTractsOnly',       useTracts, ...
+                                 'createTractPairs',        true, ...
+                                 'TRT',                    'TEST', ...
+                                 'AGE',                     [14,58], ...
+                                 'GENDER',                 {'male', 'female'});
+                             
+[dtt2000, unsProft2000, unsMeanst2000] = dr_createWorkingTables(DT, ...
+                                 'sliceBasedOn',           {'Proj', 'SHELL'}, ...
+                                 'SHELL',                  {'2000'}, ...
+                                 'removeTractsContaining', {'Callosum'}, ... 
+                                 'useThisTractsOnly',       useTracts, ...
+                                 'createTractPairs',        true, ...
+                                 'TRT',                    'TEST', ...
                                  'AGE',                     [14,58], ...
                                  'GENDER',                 {'male', 'female'});
                              
@@ -102,12 +112,7 @@ nansByProject.Percentage = 100*(nansByProject.Fun_meanVal./nansByProject.GroupCo
 fprintf('\n\nSame thing but per tract and project: \n')
 nansByTractProject = varfun(onans,dtt,'GroupingVariables',{'Proj','SHELL','Struct'},'InputVariables',{'meanVal'});
 nansByTractProject.Percentage = 100*(nansByTractProject.Fun_meanVal./nansByTractProject.GroupCount)
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ALL CALCULATIONS BELOW NEED TO BE INDEPENDENT AND STAND-ALONE   
-%% Every cell should start referencing one of the tables just created
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                              
-                             
+                       
 %% Look at the populations for the three projects
 AGE_GENDER_TABLE = unsProf(unsProf.SHELL=='1000', {'Proj','AGE','GENDER'});
 AGE_means        = varfun(@mean ,AGE_GENDER_TABLE,'GroupingVariables','Proj','InputVariables',{'AGE'});
@@ -128,162 +133,26 @@ saveas(gcf,fullfile(saveItHere, 'AGE_ANOVA_a.png'),'png');close(gcf);close(gcf);
 
 %% CREATE FA PROFILES 
 
-% TEST
-dt        = dtt;
-cats      = categories(dt.SliceCats);
-catcolors = unique(dt.SliceCatsRGB);
-tracts    = unique(dt.Struct);
-% Wahl Order
-tracts    = tracts([3,4,  11,12,  5,6,   7,8,   9,10,   1,2]);
-% Create full screen window conrolling size in pixels 
-figHdl = figure('Name','FA profiles', ...
-                'NumberTitle','off', ...
-                'visible',   'on', ...
-                'color','w', ...
-                'Units','pixel', ...
-                'Position',[0 0 1900 1100]);
-for nt = 1: length(tracts)
-    subplot(3,4,nt)
-    tn = tracts(nt);
-    a = [];
-    for nc=1:length(cats)
-        cat      = cats{nc}; 
-        catColors= dt{dt.SliceCats==cat,'SliceCatsRGB'}; catColor=catColors{1,:};
-        values   = mean(dt{dt.Struct==tn & dt.SliceCats==cat,'Val'},1,'omitnan');
-        sdvalues = std(dt{dt.Struct==tn & dt.SliceCats==cat,'Val'},1,'omitnan');
-        upper    = values + sdvalues; lower = values - sdvalues;
-        a = [a; plot([1:100],values,'color',catColor,'linewidth',2)]; hold on;
-        jbfill([1:100],upper,lower,catColor,catColor,0,0.1);
-    end
-    if (nt > 6 && nt < 11)
-        legend(a, strrep(cats,'_','\_'), 'location','northwest'); 
-    else
-        legend(a, strrep(cats,'_','\_'), 'location','southwest'); 
-    end
-    ylabel('FA', 'FontWeight','bold'); % xlabel('Divisions')
-    set(gca,'xtick',[])
-    ylim([0.1, 0.75]); yticks([0.2,.4,.6])
-    set(gca,'FontSize',18)
-    title(sprintf('%s',tn))
+% REPLICATION EXPERIMENT: HCP TEST-RETEST (FIGURE 4A)
+fnameRoot = "FA_Profiles_HCP_TEST_RETEST";
+createProfile(dtTRT,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
+                    'saveSvg'  ,true     ,'WahlOrder' ,true, 'HCPTRT',true)
+
+% GENERALIZATION EXPERIMENT: b1000 and b2000 (FIGURE 5A)
+bvals     = [1000   , 2000];
+dts       = {dtt1000, dtt2000};
+% Calculate for b1000 and b2000
+for nb=1:length(bvals)
+    bval      = bvals(nb);
+    fnameRoot = strcat("FA_Profiles_b", num2str(bval));
+    createProfile(dts{nb},'saveSvg',true,'saveItHere',string(saveItHere),'fnameRoot',fnameRoot,'WahlOrder',true)
 end
-suptitle({'FA profiles.', 'Group average (1 SD)'})
-saveas(gcf,fullfile(saveItHere, 'FA_Profiles.svg'),'svg');
-saveas(gcf,fullfile(saveItHere, 'FA_Profiles.png'),'png');
-close(gcf)
-
-
-
-% HCP TEST-RETEST
-dt = dtTRT;
-cats      = categories(dt.SliceCats);
-catcolors = unique(dt.SliceCatsRGB);
-catcolors = catcolors([1,1,2,2,3,3],:);
-linestyles= {':','-',':','-',':','-'};
-tracts    = unique(dt.Struct);
-% Wahl Order
-tracts    = tracts([3,4,  11,12,  5,6,   7,8,   9,10,   1,2]);
-figHdl = figure('Name','FA HCP TEST-RETEST profiles', ...
-                'NumberTitle','off', ...
-                'visible',   'on', ...
-                'color','w', ...
-                'Units','pixel', ...
-                'Position',[0 0 1900 1100]);
-for nt = 1: length(tracts)
-    subplot(3,4,nt)
-    tn = tracts(nt);
-    a = [];myCat = {};
-    for nc=1:length(cats)
-        cat      = cats{nc}; catColor = catcolors{nc,:}; lineStyle = linestyles{nc}; 
-        values   = mean(dt{dt.Struct==tn & dt.SliceCats==cat,'Val'},1,'omitnan');
-        sdvalues = std(dt{dt.Struct==tn & dt.SliceCats==cat,'Val'},1,'omitnan');
-        upper    = values + sdvalues; lower = values - sdvalues;
-        a = [a; plot([1:100],values,'color',catColor,'linewidth',2,'LineStyle',lineStyle)]; hold on; 
-        myCat = {myCat; cat};
-        jbfill([1:100],upper,lower,catColor,catColor,0,0.1);
-    end
-
-    if (nt > 6 && nt < 11)
-        legend(a, strrep(cats,'_','\_'), 'location','northwest'); 
-    else
-        legend(a, strrep(cats,'_','\_'), 'location','southwest'); 
-    end
-    ylabel('FA', 'FontWeight','bold'); % xlabel('Divisions')
-    set(gca,'xtick',[])
-    ylim([0.1, 0.75]); yticks([0.2,.4,.6])
-    set(gca,'FontSize',18)
-    title(sprintf('%s',tn))
-end
-suptitle({'HCP TEST-RETEST FA profiles.', 'Group average (1 SD)'})
-saveas(gcf,fullfile(saveItHere, 'FA_Profiles_HCP_TEST_RETEST.svg'),'svg');
-saveas(gcf,fullfile(saveItHere, 'FA_Profiles_HCP_TEST_RETEST.png'),'png');
-close(gcf)
 
 %% TEST: MEAN FA BARS/GENERALIZATION PLOTS
-% Duplicate the first table in Wahl 2010
-omean   = @(x) mean(x,'omitnan');
-ostd    = @(x) std(x,'omitnan');
-left_color = [0 0 .55]; right_color = [0.3 0.3 0.3];
-
-
-% ALL: MEAN FA BARS
-tmp     = varfun(ostd,dtt,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes = varfun(omean,dtt,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes.Properties.VariableNames{'Fun_meanVal'} = 'Mean';
-replRes.SD  = tmp.Fun_meanVal;
-replRes     = replRes(:,[1,2,4,5]);
-% Unstack it to show it as consecutive tables. Reorder to replicate
-replRes     = unstack(replRes,{'Mean','SD'},{'SliceCats'});
-replRes     = replRes([3,4,  11,12,   5,6,   7,8,   9,10,   1,2],:);
-% Table copied from Wahl 2010 paper
-replRes.Mean_WHLorig = [0.565,0.522,0.517,0.490,0.549,0.534,0.510,0.497,0.489,0.470,0.587,0.575]';
-replRes.SD_WHLorig   = [0.028,0.028,0.023,0.03,0.026,0.024,0.028,0.026,0.022,0.024,0.023,0.021]';
-replResSorted         = replRes(:,[1, 14,15,  5,11,   6,12,   7,13,   2,8,  3,9,   4,10]);
-
-
-dt = dtt;
-cats      = categories(dt.SliceCats);
-catcolors = unique(dt.SliceCatsRGB);
-catcolors.cat = categorical(cats);
-catcolors     = [table(0,0,0,{'WHLorig'},'VariableNames',{'R','G','B','cat'}); ...
-                 catcolors];
-catcolors     = catcolors([1,5,6,7,2,3,4],:);
-
-% CREATE FIGURE AND PLOT
-bigfig = figure('Name','Mean FA per project', ...
-                'NumberTitle','off', ...
-                'visible',   'on', ...
-                'color','w', ...
-                'Units','pixel', ...
-                'Position',[0 0 1900 1100]);
-for nt = 1: height(replResSorted)
-    set(bigfig,'defaultAxesColorOrder',[left_color; right_color]);
-    subplot(3,4,nt)
-    tn = string(replResSorted{nt,'Struct'});
-    Names = replResSorted.Properties.VariableNames(contains(replResSorted.Properties.VariableNames, 'Mean_'));
-    Names = strrep(Names,'Mean_','');
-    means = replResSorted{nt,contains(replResSorted.Properties.VariableNames, 'Mean_')};
-    stds  = replResSorted{nt,contains(replResSorted.Properties.VariableNames, 'SD_')};
-    CV    = 100*(stds ./ means);
-    inBarColor = {'w','k','w','k','w','k','k'};
-    yyaxis right; ylim([0 20]); ylabel('CoV (%)');
-    plot([1:length(CV)],CV,'--','Color',right_color,'linewidth',2);
-    for nc=1:length(means)
-        yyaxis left; ylabel('Mean FA'); ylim([0, .8])
-        bar(nc, means(nc), 'FaceColor', catcolors{nc,{'R','G','B'}},'EdgeColor','none','BarWidth',.9); hold on;
-        set(gca,'xtick',[]); set(gca,'xtickLabel',[]);
-        % T = text(nc, -0.05, string(catcolors.cat(nc)),'Color',[.0 .0 .0 ], 'Rotation', 45, 'HorizontalAlignment', 'Right');
-        d  = errorbar(nc,means(nc),stds(nc),'.', 'color',[.5 .5 .5 ]); d.LineWidth = 2;
-        T1 = text(nc, -0.05, string(catcolors.cat(nc)),'Color',[.0 .0 .0 ], 'Rotation', 45, 'HorizontalAlignment', 'Right');
-        % T2 = text(nc, 0.05, sprintf('CoV=%1.2f%%',CV(nc)),'Color',inBarColor{nc}, 'Rotation', 90, 'HorizontalAlignment', 'Left','fontweight','bold','fontsize',12);
-        yyaxis right; ylim([0 20]);ylabel('CoV (%)');
-        plot(nc,CV(nc),'o', 'MarkerEdgeColor',right_color,'MarkerFaceColor','w','MarkerSize',8);hold on;
-    end
-    set(gca,'FontSize',14)
-    title(sprintf('%s',tn))
-end
-suptitle({'Mean FA per project.'})
-saveas(bigfig,fullfile(saveItHere, 'FA_Means_withCoVdots.png'),'png');
-close(bigfig)
+% Plot bars with covar
+fnameRoot = "FA_Means_withCoVdots";
+createBars(dtt,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
+                    'saveSvg'  ,true     ,'WahlOrder' ,true, 'HCPTRT',false)
 
 
 
@@ -506,381 +375,39 @@ saveas(bigfig,fullfile(saveItHere, sprintf('GI_withIndex_FA_Meansvs%s.svg',versu
 close(bigfig)
 
 %% HCP TEST-RETEST: MEAN FA BARS/TRT SCATTERPLOTS/GENERALIZATION PLOTS
-omean   = @(x) mean(x,'omitnan');
-ostd    = @(x) std(x,'omitnan');
-left_color = [0 0 .55]; right_color = [0.3 0.3 0.3];
-
-tmp     = varfun(ostd,dtTRT,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes = varfun(omean,dtTRT,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes.Properties.VariableNames{'Fun_meanVal'} = 'Mean';
-replRes.SD  = tmp.Fun_meanVal;
-replRes     = replRes(:,[1,2,4,5]);
-% Unstack it to show it as consecutive tables. Reorder to replicate
-replRes     = unstack(replRes,{'Mean','SD'},{'SliceCats'});
-replRes     = replRes([3,4,  11,12,   5,6,   7,8,   9,10,   1,2],:);
-
-% This code is with WHLorig at the beginning
-replRes.Mean_WHLorig = [0.565,0.522,0.517,0.490,0.549,0.534,0.510,0.497,0.489,0.470,0.587,0.575]';
-replRes.SD_WHLorig   = [0.028,0.028,0.023,0.03,0.026,0.024,0.028,0.026,0.022,0.024,0.023,0.021]';
-% replResSortedTRT      = replRes(:,[1, 14,15,  3,9,   2,8,   5,11,   4,10,  7,13,   6,12]);
-% This code is without WHLorig at the beginning
-% replRes.Mean_WHLorig = [0.565,0.522,0.517,0.490,0.549,0.534,0.510,0.497,0.489,0.470,0.587,0.575]';
-% replRes.SD_WHLorig   = [0.028,0.028,0.023,0.03,0.026,0.024,0.028,0.026,0.022,0.024,0.023,0.021]';
-replResSortedTRT      = replRes(:,[1, 3,9,   2,8,   5,11,   4,10,  7,13,   6,12]);
-
-% Plot barplots with error bars
-dt = dtTRT;
-cats      = categories(dt.SliceCats);
-catcolors = unique(dt.SliceCatsRGB);
-% Do not add black for WHLorig, and remove the first column then
-% catcolors     = [table(0,0,0,{'WHLorig'},'VariableNames',{'R','G','B','cat'}); ...
-%                  catcolors];
-% catcolors     = catcolors([1,2,2,3,3,4,4],:);
-catcolors     = catcolors([1,1,2,2,3,3],:);
-
-% PLOT MEAN FA 
-figure('Name','Mean FA per project', ...
-                'NumberTitle','off', ...
-                'visible',   'on', ...
-                'color','w', ...
-                'Units','pixel', ...
-                'Position',[0 0 1900 1100]);
-for nt = 1: height(replResSortedTRT)
-    % left_color = [0 0 .55]; right_color = [0.2 0.2 0.2];
-    set(bigfig,'defaultAxesColorOrder',[left_color; right_color]);
-    subplot(3,4,nt);
-    tn = string(replResSortedTRT{nt,'Struct'});
-    Names = replResSortedTRT.Properties.VariableNames(contains(replResSortedTRT.Properties.VariableNames, 'Mean_'));
-    Names = strrep(Names,'Mean_','');
-    means = replResSortedTRT{nt,contains(replResSortedTRT.Properties.VariableNames, 'Mean_')};
-    stds  = replResSortedTRT{nt,contains(replResSortedTRT.Properties.VariableNames, 'SD_')};
-    CV    = 100*(stds ./ means);
-    inBarColor = {'w','w','k','k','k','k'};
-    yyaxis right; ylim([0 20]); ylabel('CoV (%)');
-    % plot([1:length(CV)],CV,'--','Color',right_color,'linewidth',2);
-    for nc=1:length(means)
-        yyaxis left; ylabel('Mean FA');ylim([0, .8])
-        bar(nc, means(nc), 'FaceColor', catcolors{nc,{'R','G','B'}},'EdgeColor','none','BarWidth',.9); hold on;
-        set(gca,'xtick',[]); set(gca,'xtickLabel',[]);
-        T = text(nc, -0.03, Names{nc},'Color',[.0 .0 .0 ], 'Rotation', 45, 'HorizontalAlignment', 'Right');
-        d = errorbar(nc,means(nc),stds(nc),'.', 'color',[.5 .5 .5 ]); d.LineWidth = 2;
-        % T2 = text(nc, 0.05, sprintf('CoV=%1.2f%%',CV(nc)),'Color',inBarColor{nc}, 'Rotation', 90, 'HorizontalAlignment', 'Left','fontweight','bold','fontsize',12);
-        yyaxis right; ylim([0 20]);ylabel('CoV (%)');
-        plot(nc,CV(nc),'o', 'MarkerEdgeColor',right_color,'MarkerFaceColor','w','MarkerSize',8);hold on;
-    end
-    set(gca,'FontSize',14)
-    title(sprintf('%s',tn))
-end
-set(bigfig,'color','w');
-suptitle({'Mean FA per project.', 'HCP TEST-RETEST'})
-saveas(bigfig,fullfile(saveItHere, 'FA_Means_withCoVdots_HCP_TRT.png'),'png');
-close(bigfig)
-
-% PLOT SD FA
-figure('Name','SD FA per project', ...
-                'NumberTitle','off', ...
-                'visible',   'on', ...
-                'color','w', ...
-                'Units','pixel', ...
-                'Position',[0 0 1900 1100]);
-for nt = 1: height(replResSortedTRT)
-    subplot(3,4,nt)
-    tn = string(replResSortedTRT{nt,'Struct'});
-    Names = replResSortedTRT.Properties.VariableNames(contains(replResSortedTRT.Properties.VariableNames, 'Mean_'));
-    Names = strrep(Names,'Mean_','');
-    means = replResSortedTRT{nt,contains(replResSortedTRT.Properties.VariableNames, 'Mean_')};
-    stds  = replResSortedTRT{nt,contains(replResSortedTRT.Properties.VariableNames, 'SD_')};
-    for nc=1:length(means)
-        bar(nc, stds(nc), 'FaceColor', catcolors{nc,{'R','G','B'}},'EdgeColor','none','BarWidth',.9); hold on;
-        set(gca,'xtick',[]); set(gca,'xtickLabel',[]);
-        T = text(nc, -0.03, Names{nc},'Color',[.0 .0 .0 ], 'Rotation', 45, 'HorizontalAlignment', 'Right');
-        % d = errorbar(nc,means(nc),stds(nc),'.', 'color',[.5 .5 .5 ]); d.LineWidth = 2;
-    end
-    ylabel('SD of FA');
-    ylim([0, .05])
-    set(gca,'FontSize',14)
-    title(sprintf('%s',tn))
-end
-set(gcf,'color','w');
-suptitle({'SD FA per project.', 'HCP TEST-RETEST'})
-saveas(gcf,fullfile(saveItHere, 'FA_SD_HCP_TRT.png'),'png');
-close(gcf)
-
-
-% PLOT HCP TRT scatterplots
-tmp     = varfun(ostd,dtTRT,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes = varfun(omean,dtTRT,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes.Properties.VariableNames{'Fun_meanVal'} = 'Mean';
-replRes.SD  = tmp.Fun_meanVal;
-replRes     = replRes(:,[1,2,4,5]);
-replRes     = unstack(replRes,{'Mean','SD'},{'SliceCats'});
-replRes     = replRes([3,4,  11,12,   5,6,   7,8,   9,10,   1,2],:);
-replResSortedTRT      = replRes(:,[1, 3,9,   2,8,   5,11,   4,10,  7,13,   6,12]);
-dt = dtTRT;
-cats      = categories(dt.SliceCats);
-catcolors = unique(dt.SliceCatsRGB);
-catcolors     = catcolors([1,1,2,2,3,3],:);
-
-
-figure('Name','Mean FA TEST-RETEST Scatterplots', ...
-                'NumberTitle','off', 'visible',   'on', ...
-                'color','w', 'Units','pixel', ...
-                'Position',[0 0 1900 1100]);
-allrmse1000  = []; allrmse2000  = []; allrmse3000  = [];
-allrrmse1000 = []; allrrmse2000 = []; allrrmse3000 = [];
-allicc1000   = []; allicc2000   = []; allicc3000   = [];
-allcov1000   = []; allcov2000   = []; allcov3000   = [];
-Tstd1000     = []; Tstd2000     = []; Tstd3000     = [];
-RTstd1000    = []; RTstd2000    = []; RTstd3000    = [];
-for nt = 1: height(replResSortedTRT)
-    subplot(3,4,nt)
-    tn = string(replResSortedTRT{nt,'Struct'});
-    b1000T    = unsMeansTRT(unsMeansTRT.TRT=='TEST' & unsMeansTRT.SHELL=='1000',{char(tn),'SubjID'});
-    b1000RT   = unsMeansTRT(unsMeansTRT.TRT=='RETEST' & unsMeansTRT.SHELL=='1000', {char(tn),'SubjID'});
-    b1000T=sortrows(b1000T,'SubjID'); b1000RT=sortrows(b1000RT,'SubjID');
-    if isequal(b1000T.SubjID,b1000RT.SubjID)
-        b1000T = b1000T.(tn); b1000RT = b1000RT.(tn);
-    else
-        error('The test-retest is not comparing the same subjects')
-    end
-
-    b2000T    = unsMeansTRT(unsMeansTRT.TRT=='TEST' & unsMeansTRT.SHELL=='2000', {char(tn),'SubjID'});
-    b2000RT   = unsMeansTRT(unsMeansTRT.TRT=='RETEST' & unsMeansTRT.SHELL=='2000', {char(tn),'SubjID'});
-    b2000T=sortrows(b2000T,'SubjID'); b2000RT=sortrows(b2000RT,'SubjID');
-    if isequal(b2000T.SubjID,b2000RT.SubjID)
-        b2000T = b2000T.(tn); b2000RT = b2000RT.(tn);
-    else
-        error('The test-retest is not comparing the same subjects')
-    end
-    
-    b3000T    = unsMeansTRT(unsMeansTRT.TRT=='TEST' & unsMeansTRT.SHELL=='3000', {char(tn),'SubjID'});
-    b3000RT   = unsMeansTRT(unsMeansTRT.TRT=='RETEST' & unsMeansTRT.SHELL=='3000', {char(tn),'SubjID'});
-    b3000T=sortrows(b3000T,'SubjID'); b3000RT=sortrows(b3000RT,'SubjID');
-    if isequal(b3000T.SubjID,b3000RT.SubjID)
-        b3000T = b3000T.(tn); b3000RT = b3000RT.(tn);
-    else
-        error('The test-retest is not comparing the same subjects')
-    end
-    
-    scatter(b1000T,b1000RT,20,catcolors{1,:},'filled');hold on;
-    scatter(b2000T,b2000RT,18,catcolors{3,:});
-    scatter(b3000T,b3000RT,20,catcolors{5,:},'filled');
-    xlim([0.1, 0.66]);ylim([0.1, 0.66]);
-    xticks([0.1:0.1:0.6]);yticks([0.1:0.1:0.6]);
-    identityLine(gca);
-    % axis equal
-    location='southeast';if nt >=11;location='southeast';end
-    [N1, Nold1, Xm1,Ym1,rho1,pval1,rhom1,pvalm1,rmse1,rmsem1,rrmse1,rrmsem1,sdX1,sdY1,sdXm1,sdYm1,icc1,iccm1,CoV1,CoVm1] = dr_corrrmse(b1000T,b1000RT);
-    [N2, Nold2, Xm2,Ym2,rho2,pval2,rhom2,pvalm2,rmse2,rmsem2,rrmse2,rrmsem2,sdX2,sdY2,sdXm2,sdYm2,icc2,iccm2,CoV2,CoVm2] = dr_corrrmse(b2000T,b2000RT);
-    [N3, Nold3, Xm3,Ym3,rho3,pval3,rhom3,pvalm3,rmse3,rmsem3,rrmse3,rrmsem3,sdX3,sdY3,sdXm3,sdYm3,icc3,iccm3,CoV3,CoVm3] = dr_corrrmse(b3000T,b3000RT);
-%     legend({sprintf('b=1000s/mm^2 (rmse=%.3f)',rmse1),...
-%             sprintf('b=2000s/mm^2 (rmse=%.3f)',rmse2),...
-%             sprintf('b=3000s/mm^2 (rmse=%.3f)',rmse3)}, ...
-%             'location',location, 'Box','off')
-    allrmse1000  = [allrmse1000 , rmse1 ];allrmse2000  = [allrmse2000 , rmse2 ];allrmse3000  = [allrmse3000 , rmse3 ];
-    allrrmse1000 = [allrrmse1000, rrmse1];allrrmse2000 = [allrrmse2000, rrmse2];allrrmse3000 = [allrrmse3000, rrmse3];
-    allicc1000   = [allicc1000  , icc1  ];allicc2000   = [allicc2000  , icc2  ];allicc3000   = [allicc3000  , icc3  ];
-    allcov1000   = [allcov1000  , CoV1  ];allcov2000   = [allcov2000  , CoV2  ];allcov3000   = [allcov3000  , CoV3  ];
-    Tstd1000     = [Tstd1000    , sdXm1 ];Tstd2000     = [Tstd2000  , sdXm2   ];Tstd3000     = [Tstd3000    , sdXm3 ];
-    RTstd1000    = [RTstd1000   , sdYm1 ];RTstd2000    = [RTstd2000  , sdYm2  ];RTstd3000    = [RTstd3000   , sdYm3 ];
-    title(sprintf('%s',tn));
-    T1 = text(.25, 0.625, sprintf('CoV (b=1000)=%1.2f%%',CoVm1),'Color',catcolors{1,:}, 'Rotation', 0, 'HorizontalAlignment', 'Left','fontweight','normal','fontsize',16);
-    T2 = text(.20, 0.575, sprintf('CoV (b=2000)=%1.2f%%',CoVm2),'Color',catcolors{3,:}, 'Rotation', 0, 'HorizontalAlignment', 'Left','fontweight','normal','fontsize',16);
-    T3 = text(.15, 0.525, sprintf('CoV (b=3000)=%1.2f%%',CoVm3),'Color',catcolors{5,:}, 'Rotation', 0, 'HorizontalAlignment', 'Left','fontweight','normal','fontsize',16);
-    xlabel('FA (TEST)','FontWeight','bold');
-    ylabel('FA (RETEST)','FontWeight','bold');
-    set(gca,'FontSize',18)
-    grid off
-
-end
-set(gcf,'color','w');
-suptitle({'Mean FA scatterplots', 'HCP TEST-RETEST'})
-saveas(gcf,fullfile(saveItHere, 'FA_Scatterplots_rmse_CoV_HCP_TRT.png'),'png');
-saveas(gcf,fullfile(saveItHere, 'FA_Scatterplots_rmse_CoV_HCP_TRT.svg'),'svg');
-close(gcf)   
-    
-% Create the table with the avsvgges
-RMSE     = [mean(allrmse1000) , mean(allrmse2000) ,mean(allrmse3000,'omitnan')]';
-rRMSE    = [mean(allrrmse1000), mean(allrrmse2000),mean(allrrmse3000,'omitnan')]';
-ICC      = [mean(allicc1000)  , mean(allicc2000)  ,mean(allicc3000,'omitnan')]';
-CoV      = [mean(allcov1000)  , mean(allcov2000)  ,mean(allcov3000,'omitnan')]';
-minCOV   = [min(allcov1000)   , min(allcov2000)   ,min(allcov3000)]';
-maxCOV   = [max(allcov1000)   , max(allcov2000)   ,max(allcov3000)]';
-TRTtests = table(RMSE,rRMSE,ICC,CoV,minCOV,maxCOV);
-TRTtests.Properties.RowNames = {'b1000','b2000','b3000'};
-
-allCOVS = replResSortedTRT(:,'Struct');
-allCOVS.TRT_b1000_CoV = allcov1000';
-allCOVS.TRT_b2000_CoV = allcov2000';
-allCOVS.TRT_b3000_CoV = allcov3000';
-
+% Plot bars with covar with Mean FA
+fnameRoot = "FA_Means_withCoVdots_HCP_TRT";
+createBars(dtTRT,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
+                    'saveSvg',true     ,'WahlOrder' ,true, 'HCPTRT',true)
+% Plot bars with FA SD
+fnameRoot = "FA_SD_HCP_TRT";
+createBars(dtTRT, 'fnameRoot',fnameRoot, 'saveItHere',string(saveItHere), ...
+           'meanOrSd',"SD", 'saveSvg',true, 'WahlOrder',true, 'HCPTRT',true)
+% PLOT HCP TRT scatterplots and obtain ICC and rmse values
+fnameRoot = "FA_Scatterplots_rmse_CoV_HCP_TRT";
+[TRTtests,allCOVS] = createTRTscatterplots(dtTRT,unsMeansTRT,'fnameRoot',fnameRoot, ...
+                                           'saveItHere',string(saveItHere), ...
+                                           'meanOrSd',"SD", 'saveSvg',true,...
+                                           'WahlOrder',true, 'HCPTRT',true)
 
 %% MEAN FA DISTRIBUTIONS (normality, Cohens'd)
-nBoot     = 5000;
-normalKsdensity = 'normal';
-ylims = [0, 10];
-xlims = [0.1, .8];
 
-left_color = [0 0 .55]; right_color = [0.3 0.3 0.3];
-% ALL
-tmp     = varfun(ostd,dtt,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes = varfun(omean,dtt,'GroupingVariables',{'Struct','SliceCats'},'InputVariables',{'meanVal'});
-replRes.Properties.VariableNames{'Fun_meanVal'} = 'Mean';
-replRes.SD  = tmp.Fun_meanVal;
-replRes     = replRes(:,[1,2,4,5]);
-% Unstack it to show it as consecutive tables. Reorder to replicate
-replRes     = unstack(replRes,{'Mean','SD'},{'SliceCats'});
-replRes     = replRes([3,4,  11,12,   5,6,   7,8,   9,10,   1,2],:);
-replRes.Mean_WHLorig = [0.565,0.522,0.517,0.490,0.549,0.534,0.510,0.497,0.489,0.470,0.587,0.575]';
-replRes.SD_WHLorig   = [0.028,0.028,0.023,0.03,0.026,0.024,0.028,0.026,0.022,0.024,0.023,0.021]';
-replResSorted         = replRes(:,[1, 14,15,  5,11,   6,12,   7,13,   2,8,  3,9,   4,10]);
+% Create distributions for b1000
+fnameRoot = "FA_Distributions_b1000";
+createDistributionsPlots(dtt1000,unsMeanst1000,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
+                         'saveSvg',true, 'WahlOrder',true, 'HCPTRT',false)
 
-% Plot barplots with error bars
-dt = dtt;
-cats      = categories(dt.SliceCats);
-catcolors = unique(dt.SliceCatsRGB);
-catcolors.cat = categorical(cats);
-catcolors     = [table(0,0,0,{'WHLorig'},'VariableNames',{'R','G','B','cat'}); ...
-                 catcolors];
-catcolors     = catcolors([1,5,6,7,2,3,4],:);
+% Create distributions for b2000
+fnameRoot = "FA_Distributions_b2000";
+createDistributionsPlots(dtt2000,unsMeanst2000,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
+                         'saveSvg',true, 'WahlOrder',true, 'HCPTRT',false)
 
-mrvNewGraphWin('Mean FA distributions'); 
-% figHdl = figure('Name','FA profiles', ...
-%                 'NumberTitle','off', ...
-%                 'visible',   'on', ...
-%                 'color','w', ...
-%                 'Units','pixel', ...
-%                 'Position',[0 0 1900 1100]);
-for nt = 1: height(replResSorted)
-    subplot(3,4,nt)
-    tn = char(replResSorted{nt,'Struct'});
-    X       = unsMeans.(tn);
-    [X_values, MU, SIGMA, MN, MX] = dr_distPlottingVals(X);
-    if strcmp(normalKsdensity, 'normal')
-        PD = fitdist(X,'normal');
-        group_pdf = pdf(PD, X_values);
-        mySupTitle = 'Normal distribution of mean FA-s per project/tract.';
-    else
-        [group_pdf, X_values] = ksdensity(X);
-        mySupTitle = 'Density distribution of mean FA-s per project/tract.';
-    end
-    a = plot(X_values,group_pdf,'Color','k','LineStyle',':','LineWidth',3); hold on;
-    title(tn); ylim(ylims);xlim(xlims);
-    [ph,msg]=jbfill(X_values,group_pdf,zeros(size(group_pdf)),'k','k',0,0.4);
-    h1=plot(MU*[1,1],[0 max(group_pdf)],'Color','k','LineStyle',':','LineWidth',1);
-    xlabel('FA', 'FontWeight','bold'); 
-    % ylim([0.1, 0.75]); yticks([0.2,.4,.6])
-    set(gca,'FontSize',18)
-    title(sprintf('%s',tn))
-    cats      = categories(unsMeans.SliceCats);
-    catcolors = unique(unsMeans.SliceCatsRGB);
-    for sc=1:length(cats)
-        x = unsMeans.(tn)(unsMeans.SliceCats==cats{sc});
-        [x_values, mu, sigma, mn, mx] = dr_distPlottingVals(x);
-        if strcmp(normalKsdensity, 'normal')
-            pd = fitdist(x,'normal');
-            indiv_pdf = pdf(pd, x_values);
-        else
-            [indiv_pdf, x_values] = ksdensity(x);
-        end
-        a = [a;plot(x_values, indiv_pdf/length(cats), 'LineWidth',2, 'color', catcolors{sc,:})]; 
-        % Now calculate the effect size with bootstrapping and mark it in plot
-        stats = mes( X, x, ...
-                     'hedgesg','isDep',0,'nBoot',nBoot, ...
-                     'doPlot',0,'missVal','listwise','confLevel',.95,'ROCtBoot',false);
-        if stats.t.p > 0.05; texto = 'n.s.';
-        else;                texto = sprintf('d=%6.3f',stats.hedgesg); end
-        hArrw = (length(cats)-sc+1)*(max(group_pdf)/length(cats));
-        h1=plot(mu*[1,1],[0 hArrw],'Color',catcolors{sc,:},'LineStyle','-','LineWidth',.7);
-        drawArrow([mu MU],[hArrw,hArrw],{'Color',catcolors{sc,:},'LineWidth',.7, ...
-                  'string',texto, 'FontSize', 14});
-    end
-    % legend(a,[{'All Samples'};strrep(cats,'_','\_')],'Location','NorthEast'); hold off;                             
-
-end
-set(gcf,'color','w');
-suptitle({mySupTitle})
-saveas(gcf,fullfile(saveItHere, 'FA_Distributions.svg'),'svg');
-saveas(gcf,fullfile(saveItHere, 'FA_Distributions.png'),'png');
-close(gcf)
-
-
-
-
-
-% Same plot for TEST-RETEST
-HCPunsMeans=unsMeans(unsMeans.Proj=='HCP',:);
-HCPunsMeans.SliceCats = removecats(HCPunsMeans.SliceCats);
-HCPunsMeansrt=unsMeansrt(unsMeansrt.Proj=='HCP',:);
-HCPunsMeansrt.SliceCats = removecats(HCPunsMeansrt.SliceCats);
-
-nBoot     = 5000;
-normalKsdensity = 'normal';
-mrvNewGraphWin('T-RT Mean FA distributions'); 
-% figHdl = figure('Name','FA profiles', ...
-%                 'NumberTitle','off', ...
-%                 'visible',   'on', ...
-%                 'color','w', ...
-%                 'Units','pixel', ...
-%                 'Position',[0 0 1900 1100]);
-for nt = 1: height(replResSorted)
-    subplot(3,4,nt)
-    tn = char(replResSorted{nt,'Struct'});
-    cats      = categories(HCPunsMeans.SliceCats);
-    catcolors = unique(HCPunsMeans.SliceCatsRGB);
-    catsrt      = categories(HCPunsMeans.SliceCats);
-    catcolorsrt = catcolors;
-    a = [];
-    l = {};
-    for sc=1:length(cats)
-        x   = HCPunsMeans.(tn)(HCPunsMeans.SliceCats==cats{sc});
-        xrt = HCPunsMeansrt.(tn)(HCPunsMeansrt.SliceCats==cats{sc});
-        [x_values, mu, sigma, mn, mx] = dr_distPlottingVals(x);
-        [x_valuesrt, murt, sigmart, mnrt, mxrt] = dr_distPlottingVals(xrt);
-        if strcmp(normalKsdensity, 'normal')
-            pd = fitdist(x,'normal');
-            indiv_pdf = pdf(pd, x_values);
-            pdrt = fitdist(xrt,'normal');
-            indiv_pdfrt = pdf(pdrt, x_valuesrt);
-            mySupTitle = 'Normal distribution of mean FA-s per project/tract.';
-        else
-            [indiv_pdf, x_values] = ksdensity(x);
-            [indiv_pdfrt, x_valuesrt] = ksdensity(xrt);
-            mySupTitle = 'Density distribution of mean FA-s per project/tract.';
-        end
-        at  = plot(x_values, indiv_pdf, 'LineWidth',2, 'color',catcolors{sc,:});hold on;
-        art = plot(x_valuesrt, indiv_pdfrt, 'LineWidth',2, 'color', catcolors{sc,:}, 'LineStyle',':');
-        xlim([0, .8]);ylim([0, 20]);
-        xticks([0:0.2:.8]);yticks([0:5:20]);
-        title(tn)
-        a = [a;at;art];  % Concatenate plots to be used with legend
-        l = [l; strcat(strrep(cats{sc},'_','\_'),'TEST'); ...
-                strcat(strrep(cats{sc},'_','\_'),'RETEST')];
-        % Now calculate the effect size with bootstrapping and mark it in plot
-%         stats = mes( x, xrt, ...
-%                      'hedgesg','isDep',0,'nBoot',nBoot, ...
-%                      'doPlot',0,'missVal','listwise','confLevel',.95,'ROCtBoot',false);
-%         if stats.t.p > 0.05; sig = 'n.s.';
-%         else;                sig = sprintf('d=%6.2f',stats.t.p); end
-%         texto = sprintf('d=%6.3f (%s)',stats.hedgesg,sig);
-%         hArrw = max(indiv_pdf);
-%         hArrwrt = max(indiv_pdfrt);
-%         h1=plot(mu*[1,1],[0 hArrw],'Color',catcolors{sc,:},'LineStyle','-','LineWidth',1);
-%            plot(murt*[1,1],[0 hArrwrt],'Color',catcolors{sc,:},'LineStyle',':','LineWidth',1);
-%         drawArrow([mu murt],[hArrw,hArrw],{'Color',catcolors{sc,:},'LineWidth',1,'string',texto});
-    end
-    xlabel('FA', 'FontWeight','bold'); 
-    set(gca,'FontSize',18)
-    title(sprintf('%s',tn))
-
-    % legend(a, l,'Location','SouthWest'); hold off;
-end
-set(gcf,'color','w');
-suptitle({mySupTitle})
-saveas(gcf,fullfile(saveItHere, 'FA_Distributions_HCP_TRT.svg'),'svg');
-saveas(gcf,fullfile(saveItHere, 'FA_Distributions_HCP_TRT.png'),'png');
-close(gcf)
-         
+                     
+                     
+fnameRoot = "FA_Distributions_HCP_TRT";
+createDistributionsPlots(dtTRT,unsMeansTRT,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
+                         'saveSvg',true, 'WahlOrder',true, 'HCPTRT',true)
+       
 %% WAHL 2010: correlation colors and CI tables: DATA PREP
 % Create tables comparing the WHL test/retest, and the HCP test/retest. The
 % first one is not test/retest per se, as it is the same data, but different
