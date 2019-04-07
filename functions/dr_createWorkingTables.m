@@ -160,6 +160,10 @@ end
 
 dt    = dr_addRGBcolumn(dt);
 
+if size(unique(dt.SliceCats),1) ~= size(unique(dt.SliceCatsRGB),1)
+    error('Define more colors in dr_addRGBcolumn(), there are more experiments in project than colors defined')
+end
+
 % Unstack the tract profiles: one column per Structure
 unsProf    = unstack(dt (:,{'SliceCats', 'TRT', 'Proj','SubjID','SHELL','Val','Struct','AGE','GENDER'}),'Val','Struct'); 
 % Add an RGB color column to separate values in scatterplots or t-sne

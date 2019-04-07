@@ -61,6 +61,14 @@ useTracts = [{'CingulumCingulate'}, {'Arcuate'}, {'IFOF'}, {'ILF'}, {'Uncinate'}
           {'Corticospinal'}];
 
 % Do the filtering and obtain the unstacked tract profiles
+[dtALL, unsProfALL, unsMeansALL] = dr_createWorkingTables(DT, ...
+                                 'sliceBasedOn',           {'Proj', 'SHELL','TRT'}, ...
+                                 'SHELL',                  {'1000', '2000', '3000'}, ...
+                                 'removeTractsContaining', {'Callosum'}, ... 
+                                 'useThisTractsOnly',       useTracts, ...
+                                 'createTractPairs',        true, ...
+                                 'AGE',                     [14,58], ...
+                                 'GENDER',                 {'male', 'female'});
 [dtt, unsProf, unsMeans, indivTracts, pairedTracts] = dr_createWorkingTables(DT, ...
                                  'sliceBasedOn',           {'Proj', 'SHELL'}, ...
                                  'SHELL',                  {'1000', '2000', '3000'}, ...
@@ -70,7 +78,6 @@ useTracts = [{'CingulumCingulate'}, {'Arcuate'}, {'IFOF'}, {'ILF'}, {'Uncinate'}
                                  'TRT',                    'TEST', ...
                                  'AGE',                     [14,58], ...
                                  'GENDER',                 {'male', 'female'});                             
-                             
 [dtTRT, unsProfTRT, unsMeansTRT] = dr_createWorkingTables(DT(DT.Proj=='HCP',:), ...
                                  'sliceBasedOn',           {'Proj', 'SHELL','TRT'}, ...
                                  'SHELL',                  {'1000', '2000', '3000'}, ...
@@ -131,13 +138,14 @@ saveas(gcf,fullfile(saveItHere, 'AGE_ANOVA_a.png'),'png');close(gcf);close(gcf);
 % Error    12007.9   129   93.0847               
 % Total    12044.7   131
 
-%% CREATE FA PROFILES 
+%% Fig4A (FA PROFILES: HCP TRT) 
 
 % REPLICATION EXPERIMENT: HCP TEST-RETEST (FIGURE 4A)
 fnameRoot = "FA_Profiles_HCP_TEST_RETEST";
 createProfile(dtTRT,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
                     'saveSvg'  ,true     ,'WahlOrder' ,true, 'HCPTRT',true)
 
+%% Fig5A1-5A2 (FA PROFILES: b1000 and b2000)
 % GENERALIZATION EXPERIMENT: b1000 and b2000 (FIGURE 5A)
 bvals     = [1000   , 2000];
 dts       = {dtt1000, dtt2000};
@@ -148,266 +156,65 @@ for nb=1:length(bvals)
     createProfile(dts{nb},'saveSvg',true,'saveItHere',string(saveItHere),'fnameRoot',fnameRoot,'WahlOrder',true)
 end
 
-%% TEST: MEAN FA BARS/GENERALIZATION PLOTS
+%% Fig xxx (MEAN FA BARS: b1000 and b2000)
 % Plot bars with covar
 fnameRoot = "FA_Means_withCoVdots";
 createBars(dtt,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
                     'saveSvg'  ,true     ,'WahlOrder' ,true, 'HCPTRT',false)
 
-
-
-
-% ALL: MEAN FA GI
-% Prepare the data to be able to plot later on. 
-% This has bee copied from below, were the correlations were calculated
-recalculate  = true;
-nRep = 500;
-CIrangeOrVals = 90;  % [1:100];
-useDistribution = true;
-
-
-tractsOrder = { 'LeftCingulumCingulate'  , 'RightCingulumCingulate'  , ...
-                'LeftArcuate'            , 'RightArcuate'            , ...
-                'LeftIFOF'               , 'RightIFOF'               , ...
-                'LeftILF'                , 'RightILF'                , ...
-                'LeftUncinate'           , 'RightUncinate'           , ...
-                'LeftCorticospinal'      , 'RightCorticospinal'      };
-WahlTractNames = {  'CB left'  , 'CB right'  , ...
-                    'AF left'  , 'AF right'  , ...
-                    'IFO left' , 'IFO right' , ...
-                    'ILF left' , 'ILF right' , ...
-                    'UF left'  , 'UF right'  , ...
-                    'CST left' , 'CST right' };
-
-cats    = unique(unsMeans.SliceCats);
-catsRGB = unique(unsMeans.SliceCatsRGB);
-reorder = [4,5,6,1,2,3];
-cats    = cats(reorder);
-catsRGB = catsRGB(reorder,:);
-
-for CIrange=CIrangeOrVals
-% OBTAIN CORR AND CIs
-    for ns = 1:3
-        [meanTable, lowerCI, upperCI, bootstrapStat] = dr_meanBoots(...
-                               unsMeans(unsMeans.SliceCats==string(cats(ns)),:), ... 
-                               'tractsOrder',tractsOrder,'newTractNames',WahlTractNames, ...
-                               'useDistribution',useDistribution,'nRep',nRep,'CIrange',CIrange);
-        meanTables{ns}        = meanTable;
-        corrLowers{ns}        = lowerCI;
-        corrUppers{ns}        = upperCI;
-        corrBootstrapStat{ns} = bootstrapStat;   
-        % Do HCP-T
-        [meanTable, lowerCI, upperCI, bootstrapStat] = dr_meanBoots(...
-                               unsMeans(unsMeans.SliceCats==string(cats(ns+3)),:), ... 
-                               'tractsOrder',tractsOrder,'newTractNames',WahlTractNames, ...
-                               'useDistribution',useDistribution,'nRep',nRep,'CIrange',CIrange);
-        meanTables{ns+3}   = meanTable;
-        corrLowers{ns+3}   = lowerCI;
-        corrUppers{ns+3}   = upperCI;
-        corrBootstrapStat{ns+3} = bootstrapStat;
-        % Do HCP-RT
-        [meanTable, lowerCI, upperCI, bootstrapStat] = dr_meanBoots(...
-                               unsMeansrt(unsMeansrt.SliceCats==string(cats(ns+3)),:), ... 
-                               'tractsOrder',tractsOrder,'newTractNames',WahlTractNames, ...
-                               'useDistribution',useDistribution,'nRep',nRep,'CIrange',CIrange);
-        meanTables{ns+6} = meanTable;
-        corrLowers{ns+6}   = lowerCI;
-        corrUppers{ns+6}   = upperCI;
-        corrBootstrapStat{ns+6} = bootstrapStat;
-    end
-
-    % Add the results from the paper (do not do it here but maintain structure)
-    AllMeans        = [meanTables]';
-    AllLower        = [corrLowers]';
-    AllUpper        = [corrUppers]';
-    AllBStats       = [corrBootstrapStat]';
-
-    Experiments     = [cellstr(cats(1:3));strcat(cellstr(cats(4:6)),'TEST');strcat(cellstr(cats(4:6)),'RETEST')];
-    sumPlotTable    = table(Experiments,AllMeans,AllLower,AllUpper,AllBStats);
-
-%     UnstackedMean       = {};
-%     UnstackedLower      = {};
-%     UnstackedUpper      = {};
-%     UnstackedBStats     = {};
-%     for nt=1:height(sumPlotTable)
-%         UnstackedMean  = [UnstackedMean;  {sumPlotTable.AllMeans{nt}}];
-%         UnstackedLower = [UnstackedLower; {sumPlotTable.AllLower{nt}}];
-%         UnstackedUpper = [UnstackedUpper; {sumPlotTable.AllUpper{nt}}];
-%         UnstackedBStats= [UnstackedBStats; {sumPlotTable.AllBStats{nt}}];
-%     end
-%     sumPlotTable.UnstackedMean  = UnstackedMean;
-%     sumPlotTable.UnstackedLower = UnstackedLower;
-%     sumPlotTable.UnstackedUpper = UnstackedUpper;
-%     sumPlotTable.UnstackedBStats= UnstackedBStats;
-%     noTable = sumPlotTable(:,~contains(sumPlotTable.Properties.VariableNames,'All'));
-    noTable = sumPlotTable;
-    
-    
-    % Now make the unstacked col numeric
-    long       = noTable{1,'AllMeans'}{1};
-    AllMeans   = long{:,:}';
-    TractNames = long.Properties.VariableNames';
-    long = table(TractNames,AllMeans);
-    long.Properties.VariableNames = {'TractNames', noTable{1,1}{1}};
-    for na = 2:height(noTable)
-        tmp = noTable{na,'AllMeans'}{1};
-        long.(noTable{na,1}{1}) = tmp{:,:}';
-    end
-    long.Type = cellstr(repmat('Mean', [height(long),1]));
-    
-    % Now make the unstacked col numeric
-    longL = noTable{1,'AllLower'}{1};
-    AllLower   = longL{:,:}';
-    TractNames = longL.Properties.VariableNames';
-    longL = table(TractNames,AllLower);
-    longL.Properties.VariableNames = {'TractNames', noTable{1,1}{1}};
-    for na = 2:height(noTable)
-        tmp = noTable{na,'AllLower'}{1};
-        longL.(noTable{na,1}{1}) = tmp{:,:}';
-    end
-    longL.Type = cellstr(repmat('Lower', [height(long),1]));
-
-    % Now make the unstacked col numeric
-    longU = noTable{1,'AllUpper'}{1};
-    AllUpper   = longU{:,:}';
-    TractNames = longU.Properties.VariableNames';
-    longU = table(TractNames,AllUpper);
-    longU.Properties.VariableNames = {'TractNames', noTable{1,1}{1}};
-    for na = 2:height(noTable)
-        tmp = noTable{na,'AllUpper'}{1};
-        longU.(noTable{na,1}{1}) = tmp{:,:}';
-    end
-    longU.Type = cellstr(repmat('Upper', [height(long),1]));
-
-    % Now make the unstacked col numeric
-    longB = noTable{1,'AllBStats'}{1};
-    AllBstats   = longB{:,:}';
-    TractNames = longB.Properties.VariableNames';
-    longB = table(TractNames,AllBstats);
-    longB.Properties.VariableNames = {'TractNames', noTable{1,1}{1}};
-    for na = 2:height(noTable)
-        tmp = noTable{na,'AllBStats'}{1};
-        longB.(noTable{na,1}{1}) = tmp{:,:}';
-    end
-    longB.Type = cellstr(repmat('BStats', [height(long),1]));
-
-    % Aggregate
-    long = [long; longL; longU]; 
-    long.Type = categorical(long.Type);
-    long.TractNames = categorical(long.TractNames);
-    longcell{CIrange} = long;
-end
-% I did not create the longB for all the CIRange
-% save('allCI1to100correlationsv2.mat','longcell')
-
-
-
-
-% Instead of the bar plot use the generalization index
-referenceColumn = 'NoReference';
-versus          = 'NoRetest';
-plotIt          = true;
-plotIndex       = false;
-showLegend = false; showXnames = false; refLine=true;
-GIcoloringMethod = 'bars'; % 'circle', 'GIband', 'GRband', 'background','none','bars'
-% takeout =  {'WHLorig','YWM2000', ...
-%             'HCP2000TEST','HCP2000RETEST', ...
-%             'HCP3000TEST','HCP3000RETEST'};
-% takeout =  {'WHLorig'};        
-takeout =  {'WHLorig','WHL1000', ...
-            'YWM1000','YWM2000'};
-takeout =  {'WHLorig', ...
-            'HCP1000RETEST','HCP2000RETEST', ...
-            'HCP3000RETEST'};
-% takeout =  {'WHLorig','YWM2000', ...
-%             'WHL1000','YWM1000', ...
-%             'HCP1000TEST','HCP1000RETEST', ...
-%             'HCP2000TEST','HCP2000RETEST'};
-% takeout =  {'YWM1000','YWM2000', ...
-%             'HCP1000TEST','HCP1000RETEST', ...
-%             'HCP2000TEST','HCP2000RETEST', ...
-%             'HCP3000TEST','HCP3000RETEST'};
-
-bigfig = mrvNewGraphWin('Mean FA per project'); 
-% figHdl = figure('Name','FA profiles', ...
-%                 'NumberTitle','off', ...
-%                 'visible',   'on', ...
-%                 'color','w', ...
-%                 'Units','pixel', ...
-%                 'Position',[0 0 1900 1100]);
-set(bigfig,'WindowStyle','normal')
-set(bigfig, 'Units', 'inches', 'OuterPosition', [0, 0, 10, 14]);
-ncol=3; nrow=4;
-for nc = 1:length(TractNames)
-    % Calculate the position
-    tn  = string(long.TractNames(nc));
-    sp = subplot(ncol,nrow,nc);
-    % DO the calculation/plots
-    [WahlInsideCI, isOverlap, minUpper, maxLower, midCI, GI]=dr_compareCI(long, longB, tn,...
-                                                    'referenceColumn',referenceColumn,...
-                                                    'refLine' , refLine,'plotIndex',plotIndex, ...
-                                                    'plotIt',plotIt,'showLegend',showLegend, ...
-                                                    'takeout',takeout, 'showXnames',showXnames, ...
-                                                    'GIcoloringMethod', GIcoloringMethod, ...
-                                                    'ResultType', 'FA');
-    % xlabel('FA (TEST)','FontWeight','bold');
-    ylabel('FA','FontWeight','bold');
-    set(gca,'FontSize',18)
-    title(sprintf('%s',tn))
-    
-    if ismember(nc, [1:4:12])
-        ylabel('FA','FontWeight','bold');
-    else
-        ylabel('');
-        set(gca,'YTickLabel',[]);
-    end
-    
-    
-end
-colormap(cmapname)
-    h=colorbar;
-    set(h, 'Position', [.93 0.115 0.01 .83])
-set(bigfig,'color','w');
-suptitle({sprintf('GI_FA_Meansvs%s.png',versus), 'FA distributions'})
-
-saveas(bigfig,fullfile(saveItHere, sprintf('GI_withIndex_FA_Meansvs%s.png',versus)),'png');
-saveas(bigfig,fullfile(saveItHere, sprintf('GI_withIndex_FA_Meansvs%s.svg',versus)),'svg');
-close(bigfig)
-
-%% HCP TEST-RETEST: MEAN FA BARS/TRT SCATTERPLOTS/GENERALIZATION PLOTS
-% Plot bars with covar with Mean FA
+%% Fig 4D (FA GI: HCP) 
+fnameRoot = "FA_GI_HCP_TRT";
+includeExp =  {'HCP1000TEST','HCP1000RETEST', ...
+               'HCP2000TEST','HCP2000RETEST', ...
+               'HCP3000TEST','HCP3000RETEST'};
+GIplot(unsMeansALL, includeExp, 'useDistribution',true, 'ResultType','FA', ...
+       'fnameRoot',fnameRoot, 'saveItHere',string(saveItHere), 'saveSvg',false)  
+   
+%% Fig xxx (MEAN FA BARS: HCP TRT)
 fnameRoot = "FA_Means_withCoVdots_HCP_TRT";
 createBars(dtTRT,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
                     'saveSvg',true     ,'WahlOrder' ,true, 'HCPTRT',true)
-% Plot bars with FA SD
+                
+%% Fig xxx (SD FA BARS: HCP TRT)
 fnameRoot = "FA_SD_HCP_TRT";
 createBars(dtTRT, 'fnameRoot',fnameRoot, 'saveItHere',string(saveItHere), ...
            'meanOrSd',"SD", 'saveSvg',true, 'WahlOrder',true, 'HCPTRT',true)
-% PLOT HCP TRT scatterplots and obtain ICC and rmse values
+
+%% Fig 4B (FA SCATTERPLOT: HCP TRT)
 fnameRoot = "FA_Scatterplots_rmse_CoV_HCP_TRT";
 [TRTtests,allCOVS] = createTRTscatterplots(dtTRT,unsMeansTRT,'fnameRoot',fnameRoot, ...
                                            'saveItHere',string(saveItHere), ...
                                            'meanOrSd',"SD", 'saveSvg',true,...
                                            'WahlOrder',true, 'HCPTRT',true)
 
-%% MEAN FA DISTRIBUTIONS (normality, Cohens'd)
-
-% Create distributions for b1000
+%% Fig 5B (FA Normal Distributions: b1000) 
 fnameRoot = "FA_Distributions_b1000";
 createDistributionsPlots(dtt1000,unsMeanst1000,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
                          'saveSvg',true, 'WahlOrder',true, 'HCPTRT',false)
 
-% Create distributions for b2000
+%% Fig 5B (FA Normal Distributions: b2000) 
 fnameRoot = "FA_Distributions_b2000";
 createDistributionsPlots(dtt2000,unsMeanst2000,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
                          'saveSvg',true, 'WahlOrder',true, 'HCPTRT',false)
-
-                     
-                     
+                 
+%% Fig 4C (FA Normal Distributions: HCP TRT)                
 fnameRoot = "FA_Distributions_HCP_TRT";
 createDistributionsPlots(dtTRT,unsMeansTRT,'fnameRoot',fnameRoot,'saveItHere',string(saveItHere), ...
                          'saveSvg',true, 'WahlOrder',true, 'HCPTRT',true)
        
+%% Fig 5C1 (FA GI: b1000) 
+fnameRoot = "FA_GI_b1000";
+includeExp =  {'WHL1000TEST','YWM1000TEST', 'HCP1000TEST','HCP1000RETEST'};
+GIplot(unsMeansALL, includeExp, 'useDistribution',true, 'ResultType','FA', ...
+       'fnameRoot',fnameRoot, 'saveItHere',string(saveItHere), 'saveSvg',false)  
+   
+%% Fig 5C2 (FA GI: b2000) 
+fnameRoot = "FA_GI_b2000";
+includeExp =  {'YWM2000TEST','HCP2000TEST','HCP2000RETEST'};
+GIplot(unsMeansALL, includeExp, 'useDistribution',true, 'ResultType','FA', ...
+       'fnameRoot',fnameRoot, 'saveItHere',string(saveItHere), 'saveSvg',false)                     
+                     
+                     
 %% WAHL 2010: correlation colors and CI tables: DATA PREP
 % Create tables comparing the WHL test/retest, and the HCP test/retest. The
 % first one is not test/retest per se, as it is the same data, but different

@@ -10,12 +10,12 @@ function T = dr_addRGBcolumn(T)
 % BLACK
 mainColor{1} = [0,0,0];
 % BLUE
-mainColor{100} = [0         0    0.5625];
-mainColor{101} = [0, 0.4470, 0.7410];
-mainColor{102} = [0    0.8125    1.0000];
-mainColor{103} = [0    1    1.0000];
-mainColor{104} = [0, 0.4470, 0.7410];
-mainColor{105} = [0, 0.4470, 0.7410];
+mainColor{100} = [0  , 76 , 153]/255;
+mainColor{101} = [0  , 102, 204]/255;
+mainColor{102} = [0  , 128, 255]/255;
+mainColor{103} = [51 , 153, 255]/255;
+mainColor{104} = [102, 178, 255]/255;
+mainColor{105} = [153, 204, 255]/255;
 mainColor{106} = [0, 0.4470, 0.7410];
 mainColor{107} = [0, 0.4470, 0.7410];
 mainColor{108} = [0, 0.4470, 0.7410];

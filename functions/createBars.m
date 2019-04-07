@@ -94,13 +94,13 @@ if HCPTRT
     catcolors.cat = categorical(cats);
     inBarColor = {'w','w','k','k','k','k'};
 else
-    replResSorted         = replRes(:,[1, 14,15,  5,11,   6,12,   7,13,   2,8,  3,9,   4,10]);
+    replResSorted = replRes(:,[1, 14,15, 5,11, 6,12, 7,13, 2,8, 3,9, 4,10]);
     cats          = categories(dt.SliceCats);
     catcolors     = unique(dt.SliceCatsRGB);
+    catcolors.cat = categorical(cats);
     catcolors     = [table(0,0,0,{'WHLorig'},'VariableNames',{'R','G','B','cat'}); ...
                      catcolors];
     catcolors     = catcolors([1,5,6,7,2,3,4],:);
-    catcolors.cat = categorical(cats);
     inBarColor = {'w','k','w','k','w','k','k'};
 end
 % CREATE FIGURE AND PLOT
