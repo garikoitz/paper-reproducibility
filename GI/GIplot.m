@@ -1,4 +1,4 @@
-function GIplot(unsMeans,includeExp,varargin)
+function multiExpRegrCoeff = GIplot(unsMeans,includeExp,varargin)
 %CREATEPROFILE Summary of this function goes here
 %   Detailed explanation goes here
 %
@@ -26,6 +26,7 @@ function GIplot(unsMeans,includeExp,varargin)
 % nrowcol        :  [nrow, ncol] for plotting
 % calcType       : string we need to know if this is a correlation, a distribution...
 % onlyBilateral  : boolean
+% winSizePix     : array of 4 floats [0,0,1900,1100]
 %
 % Examples:
 %{
@@ -40,23 +41,28 @@ p = inputParser;
 addRequired(p, 'unsMeans');
 addRequired(p, 'includeExp');
 
-addOptional(p, 'fnameRoot'      , "changeThisName" , @isstring);
-addOptional(p, 'saveItHere'     , "~/tmp"          , @isstring);
-addOptional(p, 'savePng'        , false            , @islogical);
-addOptional(p, 'saveSvg'        , false            , @islogical);
-addOptional(p, 'WahlOrder'      , false            , @islogical);
-addOptional(p, 'cmapname'       , "copper"         , @isstring);
-addOptional(p, 'nRep'           , 500              , @isfloat);
-addOptional(p, 'CIrange'        , 90               , @isfloat);
-addOptional(p, 'useDistribution', true             , @islogical);
-addOptional(p, 'ResultType'     , 'corr'           , @ischar);
-addOptional(p, 'nrowcol'        , [4,3]            , @isfloat);
-addOptional(p, 'calcType'       , 'distribution'   , @ischar);
-addOptional(p, 'onlyBilateral'  , true             , @islogical);
-addOptional(p, 'winSizeInch'    , [0,0,10,14]      , @isfloat);
-addOptional(p, 'ylab'           , 'nothing'        , @ischar);
-
-
+addOptional(p, 'fnameRoot'       , "changeThisName" , @isstring);
+addOptional(p, 'saveItHere'      , "~/tmp"          , @isstring);
+addOptional(p, 'savePng'         , false            , @islogical);
+addOptional(p, 'saveSvg'         , false            , @islogical);
+addOptional(p, 'WahlOrder'       , false            , @islogical);
+addOptional(p, 'cmapname'        , "copper"         , @isstring);
+addOptional(p, 'nRep'            , 500              , @isfloat);
+addOptional(p, 'CIrange'         , 90               , @isfloat);
+addOptional(p, 'useDistribution' , true             , @islogical);
+addOptional(p, 'ResultType'      , 'corr'           , @ischar);
+addOptional(p, 'nrowcol'         , [4,3]            , @isfloat);
+addOptional(p, 'calcType'        , 'distribution'   , @ischar);
+addOptional(p, 'onlyBilateral'   , true             , @islogical);
+addOptional(p, 'winSizePix'      , []               , @isfloat);  % Almost full screen in laptop, [0 0 1900 1100]
+addOptional(p, 'winSizeInch'     , []               , @isfloat);  % [0 0 10 14]
+addOptional(p, 'ylab'            , 'nothing'        , @ischar);
+addOptional(p, 'xlab'            , 'nothing'        , @ischar);
+addOptional(p, 'showXnames'      , false            , @islogical);
+addOptional(p, 'normResidual'    , false            , @islogical);
+addOptional(p, 'Group2Individual', false            , @islogical);
+addOptional(p, 'plotGroupBar'    , false            , @islogical);
+addOptional(p, 'GIcoloringMethod', 'barsdots'       , @ischar);
 parse(p,unsMeans,includeExp,varargin{:});
 
 fnameRoot       = p.Results.fnameRoot;
@@ -72,8 +78,15 @@ ResultType      = p.Results.ResultType;
 nrowcol         = p.Results.nrowcol;
 calcType        = p.Results.calcType;
 onlyBilateral   = p.Results.onlyBilateral;
+winSizePix      = p.Results.winSizePix;
 winSizeInch     = p.Results.winSizeInch;
 ylab            = p.Results.ylab;
+xlab            = p.Results.xlab;
+showXnames      = p.Results.showXnames;
+normResidual    = p.Results.normResidual;
+Group2Individual= p.Results.Group2Individual;
+plotGroupBar    = p.Results.plotGroupBar;
+GIcoloringMethod= p.Results.GIcoloringMethod;
 
 %% PREPARE THE DATA
 
@@ -91,6 +104,8 @@ tractsOrder = { 'LeftCingulumCingulate'  , 'RightCingulumCingulate'  , ...
                 'LeftILF'                , 'RightILF'                , ...
                 'LeftUncinate'           , 'RightUncinate'           , ...
                 'LeftCorticospinal'      , 'RightCorticospinal'      };
+tractsOrder = { 'LeftArcuate'            , 'RightArcuate'            , ...
+                'LeftIFOF'               , 'RightIFOF'               };
 % To make tract names shorter or to look the same to Wahl', we can substitute
 % them with the followgin names. 
 % The functions take this argument to make the change: 
@@ -105,6 +120,68 @@ WahlTractNames = {  'CBleft'  , 'CBright'  , ...
                     'UFleft'  , 'UFright'  , ...
                     'CSTleft' , 'CSTright' };
 
+% This is breaking the flow of the code, but if we want to obtain
+% the residuals from the whole exp regression, first I need to do
+% the regression...               
+multiExpRegrCoeff = struct();
+% Extract the tract pair names
+t = unsMeans;
+[structPairs, newStructs, LIndex, RIndex] = dr_obtainPairs(t, 'wide');
+% Test
+if ~isequal(strrep(structPairs(LIndex),'Left','') , strrep(structPairs(RIndex),'Right',''))
+    error('There is a problem with the Left and Right structure indexes')
+end
+
+% Separate the table into two: 
+ttracts = t(:,  ismember(t.Properties.VariableNames, structPairs));
+trest   = t(:,  ~ismember(t.Properties.VariableNames, structPairs));
+
+if ~isempty(tractsOrder)
+    ttracts = ttracts(:,tractsOrder);
+    % Recalculate to recover order
+    [structPairs, newStructs, LIndex, RIndex] = dr_obtainPairs(ttracts, 'wide');
+end
+if WahlOrder
+    if ~isempty(WahlTractNames)
+        ttracts.Properties.VariableNames = strrep(newTractNames,' ','');
+    end
+end
+Structure = ttracts.Properties.VariableNames;
+t = [trest,ttracts];
+t = t(ismember(t.SliceCats, includeExp),:);
+
+
+for CIrange=CIrangeOrVals
+    CI = strcat("CI",num2str(CIrange));
+    N = length(newStructs);
+    multiExpRegrCoeff.(CI) = ...
+          table(categorical(repmat(newStructs',[1,1])), ...
+                repmat(nan(N,1),[1,1]), ...
+                repmat(nan(N,1),[1,1]), ...
+                repmat({nan(1,height(t))},[N,1]), ...
+               'VariableNames',{'CorName', 'b', 'slope', 'residuals'});
+    % Create a linear regression concatenating the values of all the
+    % experiments in includeExp
+    % ns = 1:length(includeExp)
+    for biStr = newStructs
+        model   = fitlm(t, ['Right' biStr{:} ' ~ ' 'Left' biStr{:}]);
+        multiExpRegrCoeff.(CI){multiExpRegrCoeff.(CI).CorName==biStr{:},'b'}=...
+            model.Coefficients{'(Intercept)','Estimate'};
+        multiExpRegrCoeff.(CI){multiExpRegrCoeff.(CI).CorName==biStr{:},'slope'}= ...
+            model.Coefficients{['Left' biStr{:}],'Estimate'};
+        multiExpRegrCoeff.(CI){multiExpRegrCoeff.(CI).CorName==biStr{:},'residuals'}= ...
+            {model.Residuals.Raw'};
+    end
+    % To plot the all part I need CIs
+    t.SliceCats = categorical(repmat("ALL", [size(t.SliceCats),1]));
+    [longValsALL,BSValsALL] = dr_createRegression(t, ... 
+                    'tractsOrder',tractsOrder, 'ExtractNumeric',false, ...
+                    'normResidual', normResidual, 'Group2Individual',Group2Individual,...
+                    'multiExpRegrCoeff', multiExpRegrCoeff.(CI), ...
+                    'nRep',nRep,'CIrange',CIrange, 'onlyBilateral',onlyBilateral);   
+end
+
+                
 allValues = struct();
 for CIrange=CIrangeOrVals
     CI = strcat("CI",num2str(CIrange));
@@ -123,10 +200,24 @@ for CIrange=CIrangeOrVals
             [longVals,BSVals] = dr_createCICorrelationMatrix(unsMeans(unsMeans.SliceCats==cat,:), ... 
                            'tractsOrder',tractsOrder, ...
                            'nRep',nRep,'CIrange',CIrange, 'onlyBilateral',onlyBilateral);
-            
-            
+        case {'regressionslope','regrslope','lmslope'}
+            % The following functions it is programmed to return a diagonal matrix
+            % Select option 'onlyBilateral',true to return only bilateral tracts
+            [longVals,BSVals] = dr_createRegression(unsMeans(unsMeans.SliceCats==cat,:), ... 
+                                'tractsOrder',tractsOrder, 'ExtractNumeric',false, ...
+                                'nRep',nRep,'CIrange',CIrange, 'onlyBilateral',onlyBilateral);
+        case {'regressionresiduals','regrresiduals','lmresiduals'}
+            % The following functions it is programmed to return a diagonal matrix
+            % Select option 'onlyBilateral',true to return only bilateral tracts
+
+            [longVals,BSVals] = dr_createRegression(unsMeans(unsMeans.SliceCats==cat,:), ... 
+                                'tractsOrder',tractsOrder, 'ExtractNumeric',false, ...
+                                'normResidual', normResidual, 'Group2Individual',Group2Individual,...
+                                'multiExpRegrCoeff', multiExpRegrCoeff.(CI), ...
+                                'nRep',nRep,'CIrange',CIrange, 'onlyBilateral',onlyBilateral);
+
         otherwise
-            error('caltType %s not implemented yet.', calcType)
+            error('calcType %s not implemented yet.', calcType)
         end
         if ns==1
             allValues.(CI).longVals = longVals;
@@ -138,65 +229,116 @@ for CIrange=CIrangeOrVals
     end
 end
 
-
 %% CREATE FIGURE AND PLOT
 
-if onlyBilateral
-    bigfig = figure('Name',fnameRoot, ...
-                    'NumberTitle','off', ...
-                    'visible',   'on', ...
-                    'color','w', ...
-                    'WindowStyle','normal', ...
-                    'Units','inches', ...
-                    'OuterPosition',winSizeInch);
-    % Instead of the bar plot use the generalization index
-    referenceColumn = 'NoReference';
-    versus          = 'NoRetest';
-    plotIt          = true;
-    plotIndex       = false;
-    showLegend = false; showXnames = false; refLine=true;
-    GIcoloringMethod = 'bars'; % 'circle', 'GIband', 'GRband', 'background','none','bars'
+if ~isempty(winSizePix) && isempty(winSizeInch) 
+    units      = 'pixel';
+    winSize    = winSizePix;
+    winPosType = 'Position';
+elseif isempty(winSizePix) && ~isempty(winSizeInch) 
+    units = 'inches';
+    winSize = winSizeInch;
+    winPosType = 'OuterPosition';
+else
+    units      = 'pixel';
+    winSizePix = [0 0 1900 1100];
+    winPosType = 'Position';
+    warning('Using default window size, specify winSizePix or winSizePix (and not both)')
+end
 
-    nrow=nrowcol(1); ncol=nrowcol(2);
-    for nc = 1:size(allValues.(CI).BSVals,1)
-        long  = allValues.(CI).longVals;
-        longB = allValues.(CI).BSVals;
-        % Calculate the position
-        tn  = string(long.CorName(nc));
-        sp = subplot(nrow,ncol,nc);
-        % DO the calculation/plots
-        dr_compareCI(long, longB, tn,'referenceColumn',referenceColumn,...
+
+
+
+
+
+
+if onlyBilateral
+    switch GIcoloringMethod
+        case {'distributions'}
+            longB = allValues.(CI).BSVals;
+            unsMeanswithlongs = table();
+            for ne=1:length(includeExp)
+                expName  = includeExp{ne};
+                sizeVals  = size(longB{longB.CorName==newStructs{1},string(includeExp{1})}{:}');
+                tmp = table(categorical(repmat(string(expName),sizeVals)), ...
+                                     'VariableNames',{'SliceCats'});
+                tmp = [tmp, unsMeans(unsMeans.SliceCats==expName,'SliceCatsRGB')];
+                for nn=1:length(newStructs)
+                    tn = newStructs{nn};
+                    % Extract the array of residual values
+                    vals = longB{longB.CorName==tn,expName}{:}';
+                    tmp.(tn) = vals;
+                end
+                unsMeanswithlongs = [unsMeanswithlongs;tmp];
+            end
+            
+            
+            
+            createDistributionsPlots(unsMeanswithlongs,'fnameRoot',fnameRoot, ...
+                    'saveItHere',string(saveItHere), 'plotSum',false, ...
+                    'nrowcol',[1,6], 'normalKsdensity','normal', ...
+                    'ylims'  ,[0, 30],'xlims', [-0.2, 0.2], 'bilateral', false, ...
+                    'savePng',savePng,'saveSvg',saveSvg, 'WahlOrder',false, 'HCPTRT',false)
+        otherwise
+            if plotGroupBar
+                allValues.(CI).longVals = join(allValues.(CI).longVals, longValsALL);
+                allValues.(CI).BSVals   = join(allValues.(CI).BSVals,   BSValsALL);
+                includeExp              = [includeExp,'ALL']
+            end
+            bigfig = figure('Name',fnameRoot, ...
+                            'NumberTitle','off', ...
+                            'visible',   'on', ...
+                            'color','w', ...
+                            'WindowStyle','normal', ...
+                            'Units',units, ...
+                            winPosType,winSize);
+            % Instead of the bar plot use the generalization index
+            referenceColumn = 'NoReference';
+            versus          = 'NoRetest';
+            plotIt          = true;
+            plotIndex       = false;
+            showLegend = false; showXnames = showXnames; refLine=true;
+
+            nrow=nrowcol(1); ncol=nrowcol(2);
+            for nc = 1:size(allValues.(CI).BSVals,1)
+                long  = allValues.(CI).longVals;
+                longB = allValues.(CI).BSVals;
+                % Calculate the position
+                tn  = string(long.CorName(nc));
+                sp = subplot(nrow,ncol,nc);
+                % Do the calculations/plots
+                dr_compareCI(long, longB, tn,'referenceColumn',referenceColumn,...
                      'refLine' , refLine,'plotIndex',plotIndex, ...
                      'plotIt',plotIt,'showLegend',showLegend, ...
                      'includeExp',includeExp, 'showXnames',showXnames, ...
                      'GIcoloringMethod', GIcoloringMethod, ...
+                     'normResidual', normResidual, 'groupStats', multiExpRegrCoeff.(CI), ...
                      'ResultType', ResultType);
-        % xlabel('FA (TEST)','FontWeight','bold');
-        ylabel('FA','FontWeight','bold');
-        set(gca,'FontSize',18)
-        title(sprintf('%s',tn))
+                set(gca,'FontSize',18)
+                title(sprintf('%s',tn))
+                if nrow==1
+                    if ismember(nc, [1])
+                        ylabel(ylab,'FontWeight','bold');
+                    else
+                        ylabel('');
+                        set(gca,'YTickLabel',[]);
+                    end
+                else
+                    if ismember(nc, [1:4:12])
+                        ylabel(ylab,'FontWeight','bold');
+                    else
+                        ylabel('');
+                        set(gca,'YTickLabel',[]);
+                    end
+                end
 
-        if nrow==1
-            if ismember(nc, [1])
-                ylabel(ylab,'FontWeight','bold');
-            else
-                ylabel('');
-                set(gca,'YTickLabel',[]);
             end
-        else
-            if ismember(nc, [1:4:12])
-                ylabel(ylab,'FontWeight','bold');
-            else
-                ylabel('');
-                set(gca,'YTickLabel',[]);
-            end
-        end
-
+            colormap(cmapname)
+            h=colorbar;
+            set(h, 'Position', [.93 0.115 0.01 .83])
+            suptitle({strrep(fnameRoot,'_','\_'), 'GI plots'})
     end
-    colormap(cmapname)
-    h=colorbar;
-    set(h, 'Position', [.93 0.115 0.01 .83])
-    suptitle({strrep(fnameRoot,'_','\_'), 'GI plots'})
+
 else  % I copied this from the original file for the case of lower diagonal but it needs to be refactored
     warning('Lower diagonal needs to be refactored')
     % Now the data preparation part have been done above, and it returns
@@ -486,13 +628,6 @@ end
 
     %}
 end
-
-
-
-
-
-
-
 
 %% SAVE
 if ~exist(saveItHere,'dir')

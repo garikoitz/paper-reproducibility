@@ -85,7 +85,8 @@ upperCI         = [];
 matrixT = t{:,:};
 
 
-% We can include a matrix or a single value. 
+
+% Set useDistribution if we want to obtain the mean and the CI of the mean
 if useDistribution
    [Mean    ,lowerQCI     ,upperQCI, ...
     lowerMean,lowerLowerQCI,lowerUpperQCI, ...
@@ -97,7 +98,7 @@ if useDistribution
     meanCI  = Mean; 
     lowerCI = lowerLowerQCI;
     upperCI = upperUpperQCI;
-else
+else 
     % Define the required confidence intervals
     twoTailedRange = (100 - CIrange) / 2;
     % Create the functions for the correlation with options and the CI

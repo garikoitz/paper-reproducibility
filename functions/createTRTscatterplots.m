@@ -16,7 +16,6 @@ function [TRTtests,allCOVS] = createTRTscatterplots(dt,unsMeans,varargin)
 % Optionals: 
 % fnameRoot : string
 % saveItHere: string
-% meanOrSd  : string
 % savePng   : boolean
 % saveSvg   : boolean
 % WahlOrder : boolean
@@ -37,7 +36,6 @@ addRequired(p, 'unsMeans');
 
 addOptional(p, 'fnameRoot'   , "changeThisName" , @isstring);
 addOptional(p, 'saveItHere'  , "~/tmp"          , @isstring);
-addOptional(p, 'meanOrSd'    , "mean"           , @isstring);
 addOptional(p, 'savePng'     , false            , @islogical);
 addOptional(p, 'saveSvg'     , false            , @islogical);
 addOptional(p, 'WahlOrder'   , false            , @islogical);
@@ -46,7 +44,6 @@ parse(p,dt,unsMeans,varargin{:});
 
 fnameRoot   = p.Results.fnameRoot;
 saveItHere  = p.Results.saveItHere;
-meanOrSd    = p.Results.meanOrSd;
 savePng     = p.Results.savePng;
 saveSvg     = p.Results.saveSvg;
 WahlOrder   = p.Results.WahlOrder;
@@ -130,10 +127,12 @@ for nt = 1: height(replResSortedTRT)
     scatter(b1000T,b1000RT,20,catcolors{1,:},'filled');hold on;
     scatter(b2000T,b2000RT,18,catcolors{3,:});
     scatter(b3000T,b3000RT,20,catcolors{5,:},'filled');
-    xlim([0.1, 0.66]);ylim([0.1, 0.66]);
-    xticks([0.1:0.1:0.6]);yticks([0.1:0.1:0.6]);
+    % xlim([0.3, 0.66]);ylim([0.3, 0.66]);
+    % xticks([0.3:0.1:0.6]);yticks([0.3:0.1:0.6]);
+    xlim([0.3, 0.66]);ylim([0.3, 0.66]);
+    xticks([0.4:0.1:0.6]);yticks([0.4:0.1:0.6]);
     identityLine(gca);
-    % axis equal
+    axis equal
     location='southeast';if nt >=11;location='southeast';end
     [N1, Nold1, Xm1,Ym1,rho1,pval1,rhom1,pvalm1,rmse1,rmsem1,rrmse1,rrmsem1,sdX1,sdY1,sdXm1,sdYm1,icc1,iccm1,CoV1,CoVm1] = dr_corrrmse(b1000T,b1000RT);
     [N2, Nold2, Xm2,Ym2,rho2,pval2,rhom2,pvalm2,rmse2,rmsem2,rrmse2,rrmsem2,sdX2,sdY2,sdXm2,sdYm2,icc2,iccm2,CoV2,CoVm2] = dr_corrrmse(b2000T,b2000RT);

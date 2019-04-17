@@ -100,7 +100,7 @@ for nt = 1: length(tracts)
     end
     ylabel('FA', 'FontWeight','bold'); % xlabel('Divisions')
     set(gca,'xtick',[])
-    ylim([0.1, 0.75]); yticks([0.2,.4,.6])
+    ylim([0.1, 0.7]); yticks([0.4:.1:.6])
     set(gca,'FontSize',18)
     title(sprintf('%s',tn))
 end
