@@ -1,4 +1,4 @@
-function multiExpRegrCoeff = GIplot(unsMeans,includeExp,varargin)
+function [multiExpRegrCoeff, GItable] = GIplot(unsMeans,includeExp,varargin)
 %CREATEPROFILE Summary of this function goes here
 %   Detailed explanation goes here
 %
@@ -48,7 +48,7 @@ addOptional(p, 'saveSvg'         , false            , @islogical);
 addOptional(p, 'WahlOrder'       , false            , @islogical);
 addOptional(p, 'cmapname'        , "copper"         , @isstring);
 addOptional(p, 'nRep'            , 500              , @isfloat);
-addOptional(p, 'CIrange'         , 90               , @isfloat);
+addOptional(p, 'CIrange'         , 95               , @isfloat);
 addOptional(p, 'useDistribution' , true             , @islogical);
 addOptional(p, 'ResultType'      , 'corr'           , @ischar);
 addOptional(p, 'nrowcol'         , [4,3]            , @isfloat);
@@ -63,6 +63,12 @@ addOptional(p, 'normResidual'    , false            , @islogical);
 addOptional(p, 'Group2Individual', false            , @islogical);
 addOptional(p, 'plotGroupBar'    , false            , @islogical);
 addOptional(p, 'GIcoloringMethod', 'barsdots'       , @ischar);
+addOptional(p, 'HCPTRT'          , false            , @islogical);
+addOptional(p, 'plotIt'          , false            , @islogical);
+addOptional(p, 'plotIndex'       , false            , @islogical);
+addOptional(p, 'showLineForm'    , false            , @islogical);
+addOptional(p, 'tractsOrder'     , {}               , @iscellstr);
+
 parse(p,unsMeans,includeExp,varargin{:});
 
 fnameRoot       = p.Results.fnameRoot;
@@ -87,6 +93,11 @@ normResidual    = p.Results.normResidual;
 Group2Individual= p.Results.Group2Individual;
 plotGroupBar    = p.Results.plotGroupBar;
 GIcoloringMethod= p.Results.GIcoloringMethod;
+HCPTRT          = p.Results.HCPTRT;
+plotIt          = p.Results.plotIt;
+plotIndex       = p.Results.plotIndex;
+showLineForm    = p.Results.showLineForm;
+tractsOrder     = p.Results.tractsOrder;
 
 %% PREPARE THE DATA
 
@@ -98,14 +109,6 @@ if ~iscellstr(includeExp) || isempty(includeExp)
     error("includeExp need to be a cellstr with more than one experiment")
 end
 
-tractsOrder = { 'LeftCingulumCingulate'  , 'RightCingulumCingulate'  , ...
-                'LeftArcuate'            , 'RightArcuate'            , ...
-                'LeftIFOF'               , 'RightIFOF'               , ...
-                'LeftILF'                , 'RightILF'                , ...
-                'LeftUncinate'           , 'RightUncinate'           , ...
-                'LeftCorticospinal'      , 'RightCorticospinal'      };
-tractsOrder = { 'LeftArcuate'            , 'RightArcuate'            , ...
-                'LeftIFOF'               , 'RightIFOF'               };
 % To make tract names shorter or to look the same to Wahl', we can substitute
 % them with the followgin names. 
 % The functions take this argument to make the change: 
@@ -251,7 +254,7 @@ end
 
 
 
-
+GItable = table();
 if onlyBilateral
     switch GIcoloringMethod
         case {'distributions'}
@@ -278,65 +281,68 @@ if onlyBilateral
                     'saveItHere',string(saveItHere), 'plotSum',false, ...
                     'nrowcol',[1,6], 'normalKsdensity','normal', ...
                     'ylims'  ,[0, 30],'xlims', [-0.2, 0.2], 'bilateral', false, ...
-                    'savePng',savePng,'saveSvg',saveSvg, 'WahlOrder',false, 'HCPTRT',false)
+                    'savePng',savePng,'saveSvg',saveSvg, 'WahlOrder',false, 'HCPTRT',HCPTRT)
         otherwise
             if plotGroupBar
                 allValues.(CI).longVals = join(allValues.(CI).longVals, longValsALL);
                 allValues.(CI).BSVals   = join(allValues.(CI).BSVals,   BSValsALL);
                 includeExp              = [includeExp,'ALL']
             end
-            bigfig = figure('Name',fnameRoot, ...
+            if plotIt; bigfig = figure('Name',fnameRoot, ...
                             'NumberTitle','off', ...
                             'visible',   'on', ...
                             'color','w', ...
                             'WindowStyle','normal', ...
                             'Units',units, ...
-                            winPosType,winSize);
+                            winPosType,winSize);end;
             % Instead of the bar plot use the generalization index
             referenceColumn = 'NoReference';
             versus          = 'NoRetest';
-            plotIt          = true;
-            plotIndex       = false;
             showLegend = false; showXnames = showXnames; refLine=true;
 
             nrow=nrowcol(1); ncol=nrowcol(2);
+            
             for nc = 1:size(allValues.(CI).BSVals,1)
                 long  = allValues.(CI).longVals;
                 longB = allValues.(CI).BSVals;
                 % Calculate the position
                 tn  = string(long.CorName(nc));
-                sp = subplot(nrow,ncol,nc);
+                if plotIt; sp = subplot(nrow,ncol,nc);end
                 % Do the calculations/plots
-                dr_compareCI(long, longB, tn,'referenceColumn',referenceColumn,...
-                     'refLine' , refLine,'plotIndex',plotIndex, ...
+                GI = dr_compareCI(long, longB, tn,'referenceColumn',referenceColumn,...
+                     'refLine' , refLine,'plotIndex',plotIndex, 'showLineForm',showLineForm, ...
                      'plotIt',plotIt,'showLegend',showLegend, ...
                      'includeExp',includeExp, 'showXnames',showXnames, ...
-                     'GIcoloringMethod', GIcoloringMethod, ...
+                     'GIcoloringMethod', GIcoloringMethod, 'CIrange',CIrange, ...
                      'normResidual', normResidual, 'groupStats', multiExpRegrCoeff.(CI), ...
                      'ResultType', ResultType);
-                set(gca,'FontSize',18)
-                title(sprintf('%s',tn))
-                if nrow==1
-                    if ismember(nc, [1])
-                        ylabel(ylab,'FontWeight','bold');
+                
+                if plotIt
+                    set(gca,'FontSize',18)
+                    title(sprintf('%s',tn))
+                    if nrow==1
+                        if ismember(nc, [1])
+                            ylabel(ylab,'FontWeight','bold');
+                        else
+                            ylabel('');
+                            set(gca,'YTickLabel',[]);
+                        end
                     else
-                        ylabel('');
-                        set(gca,'YTickLabel',[]);
-                    end
-                else
-                    if ismember(nc, [1:4:12])
-                        ylabel(ylab,'FontWeight','bold');
-                    else
-                        ylabel('');
-                        set(gca,'YTickLabel',[]);
+                        if ismember(nc, [1:4:12])
+                            ylabel(ylab,'FontWeight','bold');
+                        else
+                            ylabel('');
+                            set(gca,'YTickLabel',[]);
+                        end
                     end
                 end
-
             end
-            colormap(cmapname)
-            h=colorbar;
-            set(h, 'Position', [.93 0.115 0.01 .83])
-            suptitle({strrep(fnameRoot,'_','\_'), 'GI plots'})
+            if plotIt
+                colormap(cmapname)
+                h=colorbar;
+                set(h, 'Position', [.93 0.115 0.01 .83])
+                suptitle({strrep(fnameRoot,'_','\_'), 'GI plots'})
+            end
     end
 
 else  % I copied this from the original file for the case of lower diagonal but it needs to be refactored
@@ -633,9 +639,9 @@ end
 if ~exist(saveItHere,'dir')
     mkdir(saveItHere)
 end
-if saveSvg
+if saveSvg && plotIt
     saveas(gcf,fullfile(saveItHere, strcat(fnameRoot,'.svg')),'svg');
 end
-if savePng
+if savePng && plotIt
     saveas(gcf,fullfile(saveItHere, strcat(fnameRoot,'.png')),'png');
 end

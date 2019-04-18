@@ -25,7 +25,7 @@ function [Mean    ,lowerQCI     ,upperQCI, ...
 p = inputParser;
 addRequired(p, 'values', @isnumeric);
 addOptional(p, 'nReps' , 1000, @isnumeric);
-addOptional(p, 'perc'  , 90  , @isnumeric);
+addOptional(p, 'perc'  , 95  , @isnumeric);
 addOptional(p, 'grandMean'  , false  , @islogical);
 
 parse(p,values,varargin{:});

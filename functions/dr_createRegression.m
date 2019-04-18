@@ -129,7 +129,7 @@ if onlyBilateral
 
         % This was wrong, it was taking the min and max, and we should put the
         % bootstrapped confidence intervals...
-        [Mean,~,~,~,lowerLowerQCI,~,~,~,upperUpperQCI]=dr_bootstrapDistribution(...
+        [Mean,lowerQCI,upperQCI,~,lowerLowerQCI,~,~,~,upperUpperQCI]=dr_bootstrapDistribution(...
                                                                 residuals, ...
                                                                 'nReps', nReps, ...
                                                                 'perc', CIrange, ...
@@ -137,8 +137,10 @@ if onlyBilateral
         
         % Store the values in the table
         longVals.(cat)(longVals.CorName==biStr{:} & longVals.Type=="Corr") = Mean;
-        longVals.(cat)(longVals.CorName==biStr{:} & longVals.Type=="Lower") = lowerLowerQCI;
-        longVals.(cat)(longVals.CorName==biStr{:} & longVals.Type=="Upper") = upperUpperQCI;
+        % longVals.(cat)(longVals.CorName==biStr{:} & longVals.Type=="Lower") = lowerLowerQCI;
+        % longVals.(cat)(longVals.CorName==biStr{:} & longVals.Type=="Upper") = upperUpperQCI;
+        longVals.(cat)(longVals.CorName==biStr{:} & longVals.Type=="Lower") = lowerQCI;
+        longVals.(cat)(longVals.CorName==biStr{:} & longVals.Type=="Upper") = upperQCI;
         BSVals.(cat){BSVals.CorName==biStr{:}} = residuals';
   end
     

@@ -98,6 +98,9 @@ if useDistribution
     meanCI  = Mean; 
     lowerCI = lowerLowerQCI;
     upperCI = upperUpperQCI;
+    meanCI  = Mean; 
+    lowerCI = lowerQCI;
+    upperCI = upperQCI;
 else 
     % Define the required confidence intervals
     twoTailedRange = (100 - CIrange) / 2;

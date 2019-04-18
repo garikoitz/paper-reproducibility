@@ -1,4 +1,4 @@
-function  [RefInsideCI,isOverlap,minUpper,maxLower,meanCI,GI]=dr_compareCI(...
+function  [GI, RefInsideCI,isOverlap,minUpper,maxLower,meanCI]=dr_compareCI(...
                                                         t, B, corname, varargin)
 %
 % 
@@ -28,7 +28,7 @@ addRequired(p, 't'               , @istable);
 addRequired(p, 'B'               , @istable);
 addRequired(p, "corname"         , @isstring);
 
-addOptional(p, 'CIrange'         , 90        , @isnumeric);
+addOptional(p, 'CIrange'         , 95        , @isnumeric);
 addOptional(p, 'referenceColumn' , 'WAHLorig', @ischar);
 addOptional(p, 'plotIt'          , false     , @islogical);
 addOptional(p, 'plotIndex'       , false     , @islogical);
@@ -40,6 +40,7 @@ addOptional(p, 'GIcoloringMethod', 'none'    , @ischar);
 addOptional(p, 'cmapname'        , 'copper'  , @ischar);
 addOptional(p, 'ResultType'      , 'corr'    , @ischar);
 addOptional(p, 'normResidual'    , false     , @islogical);
+addOptional(p, 'showLineForm'    , false     , @islogical);
 addOptional(p, 'groupStats'      , table()   , @istable);
 parse(p,t,B,corname, varargin{:});
 
@@ -56,6 +57,8 @@ cmapname        = p.Results.cmapname;
 ResultType      = p.Results.ResultType;
 normResidual    = p.Results.normResidual;
 groupStats      = p.Results.groupStats;
+showLineForm    = p.Results.showLineForm;
+
 
 switch lower(ResultType)
     case {'fa',"FA"}  % add other values with 0-1 ranges
@@ -124,7 +127,7 @@ values = cell2mat(Bvalues)';
          lowerMean,lowerLowerQCI,lowerUpperQCI, ...
          upperMean,upperLowerQCI,upperUpperQCI]= dr_bootstrapDistribution(values, ...
                                                             'nReps', 500, ...
-                                                            'perc', 90, ...
+                                                            'perc', CIrange, ...
                                                             'grandMean', true);
 
 if ~(length(restColumnNames)==length(upperVals))
@@ -155,8 +158,10 @@ if plotIt
     if refLine && strcmpi(GIcoloringMethod, 'grbars')
         l3 = line([0.8, length(upperVals)+.2],[refCorr,refCorr],'linewidth',2,'color','k','linestyle','-.'); hold on;
     else
-        l1 = line([0.8, length(upperVals)+.2],[upperUpperQCI,upperUpperQCI],'linewidth',2,'color',[0.3, 0.3, 0.3],'linestyle',':');hold on;
-        l2 = line([0.8, length(upperVals)+.2],[lowerLowerQCI,lowerLowerQCI],'linewidth',2,'color',[0.3, 0.3, 0.3],'linestyle',':');
+        % l1 = line([0.8, length(upperVals)+.2],[upperUpperQCI,upperUpperQCI],'linewidth',2,'color',[0.3, 0.3, 0.3],'linestyle',':');hold on;
+        % l2 = line([0.8, length(upperVals)+.2],[lowerLowerQCI,lowerLowerQCI],'linewidth',2,'color',[0.3, 0.3, 0.3],'linestyle',':');
+        l1 = line([0.8, length(upperVals)+.2],[upperQCI,upperQCI],'linewidth',2,'color',[0.3, 0.3, 0.3],'linestyle',':');hold on;
+        l2 = line([0.8, length(upperVals)+.2],[lowerQCI,lowerQCI],'linewidth',2,'color',[0.3, 0.3, 0.3],'linestyle',':');
     end
         
     xlim([0.8, length(upperVals)+.2]); 
@@ -189,9 +194,6 @@ if plotIt
         case {'bars'}
             l3 = line([0.8, length(upperVals)+.2],[Mean,Mean],'linewidth',1,'color','k','linestyle','-');
             plot(X,Y,'linewidth',12,'color',cmap(cind,:)); 
-            if plotIndex
-                text(1,yPos,sprintf('G_%i(%i%%)=%.2f%',length(upperVals),CIrange,GI),'fontsize',12,'color',[.3, .3, .3]);
-            end
         case {'barsdots'}
             if ismember({'ALL'},includeExp)
                 ALLpos = find(ismember(includeExp,{'ALL'}),1);
@@ -216,9 +218,8 @@ if plotIt
             l3 = line([0.8, length(upperVals)+.2],[Mean,Mean],'linewidth',1,'color','k','linestyle','-');
             plot(X,Y,'linewidth',12,'color',cmap(cind,:)); hold on;
             plot(XB,YB,'k.','MarkerSize',8);
-            plot(XBALL,YBALL,'w.','MarkerSize',6);
-            if plotIndex
-                text(1,yPos,sprintf('G_%i(%i%%)=%.2f%',length(upperVals),CIrange,GI),'fontsize',12,'color',[.3, .3, .3]);
+            if ismember({'ALL'},includeExp)
+                plot(XBALL,YBALL,'w.','MarkerSize',6);
             end
         case {'grbars'}
             green = [0,204,102]/255; red = [249,73,73]/255;
@@ -235,10 +236,14 @@ if plotIt
     end
     
     if plotIndex
-        text(1,UpperRange,sprintf('G_%i(%i%%)=%.2f%',length(upperVals),CIrange,GI),'fontsize',12,'color',[.3, .3, .3]);
-    end   
+        text(1,yPos,sprintf('G_%i(%i%%)=%.2f%',length(upperVals),CIrange,GI),'fontsize',12,'color',[.3, .3, .3]);
+    end 
+    plotRange = true;
+    if plotRange
+        text(1,yPos-0.1,sprintf('Range(%i%%)=%.2f%',CIrange,upperQCI-lowerQCI),'fontsize',12,'color',[.3, .3, .3]);
+    end
     % Plot the slope formula
-    if ~isempty(groupStats)
+    if showLineForm
         b     = groupStats{groupStats.CorName==corname,'b'};
         slope = groupStats{groupStats.CorName==corname,'slope'};
         text(1,.9*UpperRange,sprintf('Right=%.2f+%.2fLeft',b,slope),'fontsize',14,'color',[.3, .3, .3],'FontWeight','bold');
