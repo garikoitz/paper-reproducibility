@@ -159,15 +159,27 @@ if ~ismember({'sliceBasedOn'}, p.UsingDefaults)
 end
 
 dt    = dr_addRGBcolumn(dt);
+% Make the test-retest colors the same
+dt = sortrows(dt, 'SubjID');
+listOfSubjIDs = dt.SubjID(dt.TRT=="RETEST");
 
-if size(unique(dt.SliceCats),1) ~= size(unique(dt.SliceCatsRGB),1)
-    error('Define more colors in dr_addRGBcolumn(), there are more experiments in project than colors defined')
-end
+dt((ismember(dt.SubjID,listOfSubjIDs) & dt.TRT=="RETEST"),'SliceCatsRGB') = ...
+         dt((ismember(dt.SubjID,listOfSubjIDs) & dt.TRT=="TEST"),'SliceCatsRGB');
+     
+     
+     
+% if size(unique(dt.SliceCats),1) ~= size(unique(dt.SliceCatsRGB),1)
+%     error('Define more colors in dr_addRGBcolumn(), there are more experiments in project than colors defined')
+% end
 
 % Unstack the tract profiles: one column per Structure
 unsProf    = unstack(dt (:,{'SliceCats', 'TRT', 'Proj','SubjID','SHELL','Val','Struct','AGE','GENDER'}),'Val','Struct'); 
 % Add an RGB color column to separate values in scatterplots or t-sne
 unsProf    = dr_addRGBcolumn(unsProf);
+unsProf((ismember(unsProf.SubjID,listOfSubjIDs) & unsProf.TRT=="RETEST"),'SliceCatsRGB') = ...
+         unsProf((ismember(unsProf.SubjID,listOfSubjIDs) & unsProf.TRT=="TEST"),'SliceCatsRGB');
+
+
 
 % Create the same table but with mean profile values
 dt.meanVal= mean(dt.Val, 2);
@@ -177,6 +189,12 @@ unsMeans   = unstack(dt  (:,{'SliceCats', 'TRT','Proj','SubjID','SHELL','meanVal
 
 % Check it worked: isequal(mean(unsProf{1,'LeftArcuate'}), unsMeans{1,'LeftArcuate'})
 unsMeans   = dr_addRGBcolumn(unsMeans);
+unsMeans((ismember(unsMeans.SubjID,listOfSubjIDs) & unsMeans.TRT=="RETEST"),'SliceCatsRGB') = ...
+         unsMeans((ismember(unsMeans.SubjID,listOfSubjIDs) & unsMeans.TRT=="TEST"),'SliceCatsRGB');
+
+
+
+
 % Remove Outliers?
 if removeOutliers
     unsMeans   = dr_removeOutliers(unsMeans, 3);

@@ -1,7 +1,7 @@
 function T = dr_addRGBcolumn(T)
 
 
-
+% https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 
 % Create color map by group
 % Projects will be asigned main colors
@@ -10,12 +10,12 @@ function T = dr_addRGBcolumn(T)
 % BLACK
 mainColor{1} = [0,0,0];
 % BLUE
-mainColor{100} = [0  , 76 , 153]/255;
-mainColor{101} = [0  , 102, 204]/255;
-mainColor{102} = [0  , 128, 255]/255;
-mainColor{103} = [51 , 153, 255]/255;
-mainColor{104} = [102, 178, 255]/255;
-mainColor{105} = [153, 204, 255]/255;
+mainColor{100} = [25,25,112]/255;  % Midnight blue
+mainColor{101} = [70,130,180]/255; % Steel blue
+mainColor{102} = [0,191,255]/255;  % Deep sky blue
+mainColor{103} = [0,0,0]/255; % 51 , 153, 255
+mainColor{104} = [0,0,0]/255; % 102, 178, 255
+mainColor{105} = [0,0,0]/255; % 153, 204, 255   
 mainColor{106} = [0, 0.4470, 0.7410];
 mainColor{107} = [0, 0.4470, 0.7410];
 mainColor{108} = [0, 0.4470, 0.7410];
@@ -30,10 +30,10 @@ mainColor{116} = [0, 0.4470, 0.7410];
 mainColor{117} = [0, 0.4470, 0.7410];
 
 % GREEN
-mainColor{200} = [50,205,50]/255;
-mainColor{201} = [0,100,0]/255;
-mainColor{202} = [152,251,152]/255;
-mainColor{203} = [0.9290, 0.6940, 0.1250];
+mainColor{200} = [60, 180, 75]/255;
+mainColor{201} = [210, 245, 60]/255;
+mainColor{202} = [170, 255, 195]/255;
+mainColor{203} = [128, 128, 0]/255;
 mainColor{204} = [0.9290, 0.6940, 0.1250];
 mainColor{205} = [0.9290, 0.6940, 0.1250];
 mainColor{206} = [0.9290, 0.6940, 0.1250];
@@ -43,13 +43,13 @@ mainColor{209} = [0.9290, 0.6940, 0.1250];
 mainColor{210} = [0.9290, 0.6940, 0.1250];
 
 % RED
-mainColor{300} = [0.7410, 0, 0];
-mainColor{301} = [1,   0.6471,  0];
-mainColor{302} = [1.0000    0.1875         0];
-mainColor{303} = [1.0000    0.5000         0];
+mainColor{300} = [128, 0, 0]/255;
+mainColor{301} = [230, 25, 75]/255;
+mainColor{302} = [245, 130, 48]/255;
+mainColor{303} = [255, 225, 25]/255;
 mainColor{304} = [0.8500, 0.3250, 0.0980];
-mainColor{305} = [255,99,71];
-mainColor{306} = [255,127,80];
+mainColor{305} = [0.8500, 0.3250, 0.0980];
+mainColor{306} = [0.8500, 0.3250, 0.0980];
 mainColor{307} = [0.8500, 0.3250, 0.0980];
 mainColor{308} = [0.8500, 0.3250, 0.0980];
 mainColor{309} = [0.8500, 0.3250, 0.0980];
@@ -108,8 +108,12 @@ mainColor{710} = [0.6350, 0.0780, 0.1840];
 % each sliced categories
 T.SliceCatsRGB = array2table(repmat(NaN(height(T),1),[1,3]));
 T.SliceCatsRGB.Properties.VariableNames = {'R', 'G', 'B'};
-maincats = sort(categories(T.Proj));
-spcats   = categories(T.SliceCats);
+maincats       = sort(categories(T.Proj));
+tmpT           = T(T.TRT ~= "RETEST",:);
+tmpT.SliceCats = removecats(tmpT.SliceCats);
+spcats         = categories(tmpT.SliceCats);
+
+
 
 
 % Create the index per every category

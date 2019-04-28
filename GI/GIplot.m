@@ -1,4 +1,4 @@
-function [multiExpRegrCoeff, GItable] = GIplot(unsMeans,includeExp,varargin)
+function [multiExpRegrCoeff, Range] = GIplot(unsMeans,includeExp,varargin)
 %CREATEPROFILE Summary of this function goes here
 %   Detailed explanation goes here
 %
@@ -68,7 +68,7 @@ addOptional(p, 'plotIt'          , false            , @islogical);
 addOptional(p, 'plotIndex'       , false            , @islogical);
 addOptional(p, 'showLineForm'    , false            , @islogical);
 addOptional(p, 'tractsOrder'     , {}               , @iscellstr);
-
+addOptional(p, 'addEllipse'      , false            , @islogical);
 parse(p,unsMeans,includeExp,varargin{:});
 
 fnameRoot       = p.Results.fnameRoot;
@@ -98,6 +98,7 @@ plotIt          = p.Results.plotIt;
 plotIndex       = p.Results.plotIndex;
 showLineForm    = p.Results.showLineForm;
 tractsOrder     = p.Results.tractsOrder;
+addEllipse      = p.Results.addEllipse;
 
 %% PREPARE THE DATA
 
@@ -162,7 +163,9 @@ for CIrange=CIrangeOrVals
                 repmat(nan(N,1),[1,1]), ...
                 repmat(nan(N,1),[1,1]), ...
                 repmat({nan(1,height(t))},[N,1]), ...
-               'VariableNames',{'CorName', 'b', 'slope', 'residuals'});
+                repmat({nan(1,height(t))},[N,1]), ...
+                repmat({nan(1,height(t))},[N,1]), ...
+               'VariableNames',{'CorName', 'b', 'slope', 'residuals','SliceCats','SubjID'});
     % Create a linear regression concatenating the values of all the
     % experiments in includeExp
     % ns = 1:length(includeExp)
@@ -174,6 +177,10 @@ for CIrange=CIrangeOrVals
             model.Coefficients{['Left' biStr{:}],'Estimate'};
         multiExpRegrCoeff.(CI){multiExpRegrCoeff.(CI).CorName==biStr{:},'residuals'}= ...
             {model.Residuals.Raw'};
+        multiExpRegrCoeff.(CI){multiExpRegrCoeff.(CI).CorName==biStr{:},'SliceCats'}= ...
+            {t.SliceCats'};
+        multiExpRegrCoeff.(CI){multiExpRegrCoeff.(CI).CorName==biStr{:},'SubjID'}= ...
+            {t.SubjID'};
     end
     % To plot the all part I need CIs
     t.SliceCats = categorical(repmat("ALL", [size(t.SliceCats),1]));
@@ -309,14 +316,13 @@ if onlyBilateral
                 tn  = string(long.CorName(nc));
                 if plotIt; sp = subplot(nrow,ncol,nc);end
                 % Do the calculations/plots
-                GI = dr_compareCI(long, longB, tn,'referenceColumn',referenceColumn,...
+                [GI,Range] = dr_compareCI(long, longB, tn,'referenceColumn',referenceColumn,...
                      'refLine' , refLine,'plotIndex',plotIndex, 'showLineForm',showLineForm, ...
                      'plotIt',plotIt,'showLegend',showLegend, ...
                      'includeExp',includeExp, 'showXnames',showXnames, ...
                      'GIcoloringMethod', GIcoloringMethod, 'CIrange',CIrange, ...
                      'normResidual', normResidual, 'groupStats', multiExpRegrCoeff.(CI), ...
                      'ResultType', ResultType);
-                
                 if plotIt
                     set(gca,'FontSize',18)
                     title(sprintf('%s',tn))

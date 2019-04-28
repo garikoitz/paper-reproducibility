@@ -61,6 +61,8 @@ useTracts = [{'CingulumCingulate'}, {'Arcuate'}, {'IFOF'}, {'ILF'}, {'Uncinate'}
           {'Corticospinal'}];
 
 % Do the filtering and obtain the unstacked tract profiles
+
+% TODO: Right now the TEST and RETESTS will have the same colours, add it as an option
 [dtALL, unsProfALL, unsMeansALL] = dr_createWorkingTables(DT, ...
                                  'sliceBasedOn',           {'Proj', 'SHELL','TRT'}, ...
                                  'SHELL',                  {'1000', '2000', '3000'}, ...
@@ -184,8 +186,9 @@ createBars(dtTRT, 'fnameRoot',fnameRoot, 'saveItHere',string(saveItHere), ...
 
 %% Fig 4B (FA SCATTERPLOT: HCP TRT)
 fnameRoot = "FA_Scatterplots_rmse_CoV_HCP_TRT_tigthAxes";
-[TRTtests,allCOVS] = createTRTscatterplots(dtTRT,unsMeansTRT,'fnameRoot',fnameRoot, ...
-                                           'saveItHere',string(saveItHere), 'saveSvg',false,...
+[TRTtests,allCOVS] = createTRTscatterplots(dtTRT,unsMeansTRT, ...
+                                           'fnameRoot',fnameRoot, ...
+                                           'saveItHere',string(saveItHere), 'saveSvg',true,...
                                            'WahlOrder',true, 'HCPTRT',true)
 
 %% Fig 5B (FA Normal Distributions: b1000) 
@@ -426,9 +429,7 @@ findSpace(groupStats.CI90, ...
        'ylims', [.3,.7], 'xlims',[.3,.7], ...
        'useStdAllBS','SD', 'howManySD',[2,1] ,'CIperc',[95,68], ...
        'plotSubj',true, 'SubjValues', unsMeansALL, 'findBand',true ,...
-       'fnameRoot',fnameRoot,'saveItHere',saveItHere,'saveSvg',false,'savePng',false)  
-   
-   
+       'fnameRoot',fnameRoot,'saveItHere',saveItHere,'saveSvg',false,'savePng',false)   
    
 %% Plot all the GI plots to have the GI for all the exp that we are interested
 
@@ -441,19 +442,26 @@ includeExps = {...
                {'YWM2000TEST','HCP2000TEST'} , ...
                {'WHL1000TEST','YWM1000TEST'  , 'YWM2000TEST', 'HCP1000TEST', 'HCP2000TEST', 'HCP3000TEST'}...
               };
-% tractsOrder = { 'LeftCingulumCingulate'  , 'RightCingulumCingulate'  , ...
-%                 'LeftArcuate'            , 'RightArcuate'            , ...
-%                 'LeftIFOF'               , 'RightIFOF'               , ...
-%                 'LeftILF'                , 'RightILF'                , ...
-%                 'LeftUncinate'           , 'RightUncinate'           , ...
-%                 'LeftCorticospinal'      , 'RightCorticospinal'      };
-tractsOrder = { 'LeftArcuate'            , 'RightArcuate'            , ...
-                'LeftIFOF'               , 'RightIFOF'               };
-% Plot just the GI for the Right FA
+tractsOrder = { 'LeftCingulumCingulate'  , 'RightCingulumCingulate'  , ...
+                'LeftArcuate'            , 'RightArcuate'            , ...
+                'LeftIFOF'               , 'RightIFOF'               , ...
+                'LeftILF'                , 'RightILF'                , ...
+                'LeftUncinate'           , 'RightUncinate'           , ...
+                'LeftCorticospinal'      , 'RightCorticospinal'      };
+% tractsOrder = { 'LeftArcuate'            , 'RightArcuate'            , ...
+%                 'LeftIFOF'               , 'RightIFOF'               };
+
+% Create table to store all the ranges
+% toStr      = @(x) string(strrep(strjoin(includeExp),' ','_'));
+% allExpStrs = cellfun(toStr, includeExps);
+% VariableNames = ["Struct", allExpStrs];
+% RangeTable = array2table(nan(length(tractsOrder), length(VariableNames)), ...
+%                         'VariableNames', VariableNames);
+
 for nie = 1:length(includeExps)
     includeExp =  includeExps{nie};
     fnameRoot = string(strrep(strjoin(includeExp),' ','_'));
-    [groupStats, GItable] = GIplot(unsMeansALL, includeExp, 'tractsOrder',tractsOrder, ...
+    [groupStats, Range] = GIplot(unsMeansALL, includeExp, 'tractsOrder',tractsOrder, ...
         'useDistribution',true, 'ResultType','FA', 'CIrange',95,'GIcoloringMethod', 'barsdots',...
         'winSizeInch',[0,0,10,10], 'nrowcol',[2,3], 'ylab', 'FA', ...
         'plotIt', true, 'showLineForm', false, 'plotIndex' , true, ...
@@ -462,8 +470,12 @@ end
    
    
 % Plot the GI for the Right FA residuals after fitting with the left
+
 for nie = 1:length(includeExps)
-    includeExp =  includeExps{nie};
+    % includeExp =  includeExps{nie};
+    includeExp = {'WHL1000TEST','YWM1000TEST'  , 'YWM2000TEST', 'HCP1000TEST', 'HCP2000TEST', 'HCP3000TEST'}
+    % includeExp = {'HCP1000TEST','HCP1000RETEST','HCP2000TEST','HCP2000RETEST','HCP3000TEST','HCP3000RETEST'};
+    fnameRoot = string(strrep(strjoin(includeExp),' ','_'));
     groupStats = GIplot(unsMeansALL, includeExp, 'tractsOrder',tractsOrder, ...
            'useDistribution',false, 'ResultType','FARegressionResiduals', ...
            'winSizePix',[0,0,1900,500], 'nrowcol',[1,6], 'ylab', 'Right FA', ...
@@ -471,15 +483,152 @@ for nie = 1:length(includeExps)
            'calcType','RegressionResiduals', 'nRep',5000, 'onlyBilateral',true,...
            'plotGroupBar', true, 'GIcoloringMethod', 'barsdots','CIrange',95, 'plotIt', false,...
            'fnameRoot',fnameRoot,'saveItHere',saveItHere,'saveSvg',false,'savePng',false) 
-end
-findSpace(groupStats.CI95, ...
-       'winSizePix',[0,0,1900,500], 'nrowcol',[1,6], 'ylab', 'Right FA ', 'showLineForm',false, ...
+    groupStats = groupStats.CI95; 
+    allSubjValues = unsMeansALL(ismember(unsMeansALL.SliceCats,includeExp),:);
+    % Plot for testing something
+    fnameRoot = strcat("ContourPlot_2x3_",fnameRoot)
+    % 'winSizePix',[0,0,1900,500], 'nrowcol',[1,6],
+    groupStats = findSpace(groupStats, ...
+       'winSizePix',[0,0,1000,1000], 'nrowcol',[2,3], 'ylab', 'Right FA ', ... 
+       'showLineForm',false, ...
        'xlab', 'Left FA ', 'LineColor',[.1 .1 .1 ],'LineStyle','-', ...
-       'ylims', [.3,.7], 'xlims',[.3,.7], ...
-       'useStdAllBS','SD', 'howManySD',[2,1] ,'CIperc',[95,68], ...
-       'plotSubj',true, 'SubjValues', unsMeansALL, 'findBand',true ,...
-       'fnameRoot',fnameRoot,'saveItHere',saveItHere,'saveSvg',false,'savePng',false)  
-                     
+       'ylims', [.25,.75], 'xlims',[.25,.75], 'plotIt',true, 'addEllipse',true,...
+       'useStdAllBS','BS', 'howManySD',[2,1] ,'CIperc',[95,68], ...
+       'plotSubj',true, 'SubjValues', allSubjValues, 'findBand',true ,...
+       'fnameRoot',fnameRoot,'saveItHere',saveItHere,'saveSvg',true,'savePng',false)  
+   % {
+   % Obtain rmse for test-retest
+   trt = sortrows(allSubjValues,{'SliceCats','SubjID'});
+   % Obtain LeftRight, TestRetest IFOF
+   for bval={"1000","2000","3000"}
+       for tn={"IFOF"}
+           LT   = trt.(strcat("Left",tn{:}))(trt.SliceCats==strcat("HCP",bval{:},"TEST"));
+           RT   = trt.(strcat("Right",tn{:}))(trt.SliceCats==strcat("HCP",bval{:},"TEST"));
+           LRT  = trt.(strcat("Left",tn{:}))(trt.SliceCats==strcat("HCP",bval{:},"RETEST"));
+           RRT  = trt.(strcat("Right",tn{:}))(trt.SliceCats==strcat("HCP",bval{:},"RETEST"));
+           sprintf('Left %s%4.0f, RMSE: %.3f',tn{:},bval{:},mean(sqrt((LT-LRT).^2)))
+           sprintf('%s%4.0f, RMSE: %.3f',tn{:},bval{:},mean(sqrt((LT-LRT).^2 + (RT-RRT).^2)))
+           
+           sprintf('Left %s%4.0f, SD: %.3f', tn{:}, bval{:}, std(abs(LT-LRT)))
+           sprintf('Left TEST %s%4.0f, SD: %.3f', tn{:}, bval{:}, std(LT))
+           sprintf('Left RETEST %s%4.0f, SD: %.3f', tn{:}, bval{:}, std(LRT))
+           sprintf('%s%4.0f, SD: %.3f',tn{:}, bval{:}, std(sqrt((LT-LRT).^2 + (RT-RRT).^2))) 
+       end
+   end
+       
+    
+   
+   % Correlations
+       for tn=1:length(groupStats.CorName)
+           tract = string(groupStats.CorName(tn));
+           Left  = allSubjValues.(strcat("Left",tract));
+           Right = allSubjValues.(strcat("Right",tract));
+           sprintf('%s corr: %.2f',tract, corr(Left,Right,'rows','pairwise')) 
+       end
+
+   
+   
+   
+   
+   
+   %}
+end
+
+%% Plot the test retest in the residuals
+% Fit all with the same line and then plot one residuals agains the others.
+includeExp  = {'HCP1000TEST','HCP1000RETEST','HCP2000TEST','HCP2000RETEST','HCP3000TEST','HCP3000RETEST'};
+tractsOrder = { 'LeftArcuate'            , 'RightArcuate'            , ...
+                'LeftIFOF'               , 'RightIFOF'               };
+fnameRoot = "IsoResiduals_withAll_TEST-RETEST_HCP_datapoints";
+groupStatsTESTRETEST = GIplot(unsMeansALL, includeExp, 'tractsOrder',tractsOrder, ...
+       'useDistribution',false, 'ResultType','FARegressionResiduals', ...
+       'winSizePix',[0,0,1900,500], 'nrowcol',[1,6], 'ylab', 'Right FA', ...
+       'showXnames',false, 'normResidual', false, 'Group2Individual',true,...
+       'calcType','RegressionResiduals', 'nRep',5000, 'onlyBilateral',true,...
+       'plotGroupBar', true, 'GIcoloringMethod', 'barsdots','CIrange',95, 'plotIt', false,...
+       'fnameRoot',fnameRoot,'saveItHere',saveItHere,'saveSvg',false,'savePng',false) 
+    groupStatsTESTRETEST = groupStatsTESTRETEST.CI95; 
+    allSubjValues = unsMeansALL(ismember(unsMeansALL.SliceCats,includeExp),:);
+    % Plot for testing something
+    fnameRoot = strcat("ContourPlot_2x3_",fnameRoot)
+    % 'winSizePix',[0,0,1900,500], 'nrowcol',[1,6],
+    groupStats = findSpace(groupStatsTESTRETEST, ...
+       'winSizePix',[0,0,1000,1000], 'nrowcol',[2,3], 'ylab', 'Right FA ', ... 
+       'showLineForm',false, ...
+       'xlab', 'Left FA ', 'LineColor',[.1 .1 .1 ],'LineStyle','-', ...
+       'ylims', [.25,.75], 'xlims',[.25,.75], 'plotIt',true, ...
+       'useStdAllBS','BS', 'howManySD',[2,1] ,'CIperc',[95,68], ...
+       'plotSubj',true, 'SubjValues', allSubjValues, 'findBand',true ,...
+       'fnameRoot',fnameRoot,'saveItHere',saveItHere,'saveSvg',true,'savePng',false)  
+
+
+% plot only the IFOF but be sure that subject names are the same
+residuals = table(groupStatsTEST{groupStatsTEST.CorName=="IFOF",'residuals'}{:}','VariableNames',{'Residuals'});
+residuals.SliceCats = groupStatsTEST{groupStatsTEST.CorName=="IFOF",'SliceCats'}{:}';
+residuals.SubjID    = groupStatsTEST{groupStatsTEST.CorName=="IFOF",'SubjID'}{:}';
+residuals = sortrows(residuals,{'SubjID','SliceCats'});
+plotIt=true;
+fnameRoot = "Residuals_TEST-RETEST_HCP";
+if plotIt
+    b1000T    = residuals(residuals.SliceCats=='HCP1000TEST',{'SubjID'});
+    b1000RT   = residuals(residuals.SliceCats=='HCP1000RETEST',{'SubjID'});
+    b1000T    = sortrows(b1000T,'SubjID'); b1000RT=sortrows(b1000RT,'SubjID');
+    if isequal(b1000T.SubjID,b1000RT.SubjID)
+        b1000T = residuals{residuals.SliceCats=='HCP1000TEST',{'Residuals'}};
+        b1000RT = residuals{residuals.SliceCats=='HCP1000RETEST',{'Residuals'}};
+    else
+        error('The test-retest is not comparing the same subjects')
+    end
+
+    b2000T    = residuals(residuals.SliceCats=='HCP2000TEST',{'SubjID'});
+    b2000RT   = residuals(residuals.SliceCats=='HCP2000RETEST',{'SubjID'});
+    b2000T    = sortrows(b2000T,'SubjID'); b2000RT=sortrows(b2000RT,'SubjID');
+    if isequal(b2000T.SubjID,b2000RT.SubjID)
+        b2000T = residuals{residuals.SliceCats=='HCP2000TEST',{'Residuals'}};
+        b2000RT = residuals{residuals.SliceCats=='HCP2000RETEST',{'Residuals'}};
+    else
+        error('The test-retest is not comparing the same subjects')
+    end    
+    
+    b3000T    = residuals(residuals.SliceCats=='HCP3000TEST',{'SubjID'});
+    b3000RT   = residuals(residuals.SliceCats=='HCP3000RETEST',{'SubjID'});
+    b3000T    = sortrows(b3000T,'SubjID'); b3000RT=sortrows(b3000RT,'SubjID');
+    if isequal(b3000T.SubjID,b3000RT.SubjID)
+        b3000T = residuals{residuals.SliceCats=='HCP3000TEST',{'Residuals'}};
+        b3000RT = residuals{residuals.SliceCats=='HCP3000RETEST',{'Residuals'}};
+    else
+        error('The test-retest is not comparing the same subjects')
+    end   
+    
+    bigfig = figure('Name',fnameRoot, ...
+                            'NumberTitle','off', ...
+                            'visible',   'on', ...
+                            'color','w', ...
+                            'WindowStyle','normal', ...
+                            'Units','pixel', ...
+                            'Position',[0,0,400,400])
+    scatter(b1000T,b1000RT,50,[0, 0, 128]/255    ,'filled'); hold on;
+    scatter(b2000T,b2000RT,50,[0, 130, 200]/255  ,'filled');
+    scatter(b3000T,b3000RT,50,[70, 240, 240]/255 ,'filled');
+    % Fit ellipses
+    fitEllipse(b1000T,b1000RT,[0, 0, 128]/255)
+    fitEllipse(b2000T,b2000RT,[0, 130, 200]/255)
+    fitEllipse(b3000T,b3000RT,[70, 240, 240]/255)
+    % xlim([0.3, 0.66]);ylim([0.3, 0.66]);
+    % xticks([0.3:0.1:0.6]);yticks([0.3:0.1:0.6]);
+    identityLine(gca);
+    axis equal
+    xlim([-0.065, 0.065]);ylim([-0.065, 0.065]);
+    xticks(-0.06:0.02:0.06);
+    yticks(-0.06:0.02:0.06);
+    xlabel('\Delta FA (TEST)'  ,'FontWeight','bold');
+    ylabel('\Delta FA (RETEST)','FontWeight','bold');
+    set(gca,'FontSize',18)
+    grid off
+    saveas(gcf,fullfile(saveItHere, strcat(fnameRoot,'.svg')),'svg');
+    
+end
+                   
 %% Plot a dot in the prediction plots
 % Prepare one subject
 SubjValues = unsMeansALL(unsMeansALL.SubjID=='NIH-TBI0F', contains(unsMeansALL.Properties.VariableNames, {'Left','Right'}));

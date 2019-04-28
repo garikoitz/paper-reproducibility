@@ -49,7 +49,6 @@ HCPTRT      = p.Results.HCPTRT;
 
 %% 1.- Create the profile
 cats      = categories(dt.SliceCats);
-catcolors = unique(dt.SliceCatsRGB);
 tracts    = unique(dt.Struct);
 % Wahl Order
 if WahlOrder
@@ -57,7 +56,6 @@ if WahlOrder
 end
 % HCPTRT
 if HCPTRT
-    catcolors = catcolors([1,1,2,2,3,3],:);
     linestyles= {':','-',':','-',':','-'};
 end
 
@@ -77,7 +75,8 @@ for nt = 1: length(tracts)
         cat      = cats{nc}; 
         cat      = cats{nc}; 
         if HCPTRT
-            catColor  = catcolors{nc,:}; 
+            catColors = dt{dt.SliceCats==cat,'SliceCatsRGB'}; 
+            catColor  = catColors{1,:}; 
             lineStyle = linestyles{nc}; 
         else
             catColors = dt{dt.SliceCats==cat,'SliceCatsRGB'}; 
